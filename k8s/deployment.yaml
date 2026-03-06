@@ -28,9 +28,6 @@ spec:
         - name: generated-images
           persistentVolumeClaim:
             claimName: generated-images
-        - name: code-base
-          persistentVolumeClaim:
-            claimName: code-base
         - name: models
           hostPath:
             path: /models
@@ -66,8 +63,6 @@ spec:
               mountPath: /scripts
             - name: generated-images
               mountPath: /root/images
-            - name: code-base
-              mountPath: /app
             - name: models
               mountPath: /models
           env:
