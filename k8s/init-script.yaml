@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: runner-init-script
+  namespace: llmmll
+data:
+  init.sh: |
+    #!/bin/bash
+    # Runner initialization script
+    set -e
+
+    echo "=== Runner Initialization ==="
+
+    # Create required directories
+    mkdir -p /root/.ollama
+    mkdir -p /root/images
+    mkdir -p /models
+
+    # Set proper permissions
+    chmod -R 755 /root/.ollama
+    chmod -R 755 /root/images
+
+    # Check GPU availability
+    echo "=== GPU Information ==="
+    nvidia-smi --query-gpu=name,memory.total,memory.free,temperature.gpu --format=csv || echo "No GPUs found"
+
+    echo "=== Initialization Complete ==="

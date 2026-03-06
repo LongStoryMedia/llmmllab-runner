@@ -1,0 +1,165 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llmmll-runner
+  namespace: llmmll
+  labels:
+    app: llmmll-runner
+spec:
+  selector:
+    matchLabels:
+      app: llmmll-runner
+  template:
+    metadata:
+      labels:
+        app: llmmll-runner
+    spec:
+      runtimeClassName: nvidia
+      nodeSelector:
+        kubernetes.io/hostname: lsnode-3
+      volumes:
+        - name: ollama-models-volume
+          persistentVolumeClaim:
+            claimName: llmmll-models
+        - name: init-script
+          configMap:
+            name: llmmll-init-script
+            defaultMode: 0755
+        - name: generated-images
+          persistentVolumeClaim:
+            claimName: generated-images
+        - name: code-base
+          persistentVolumeClaim:
+            claimName: code-base
+        - name: models
+          hostPath:
+            path: /models
+            type: DirectoryOrCreate
+      containers:
+        - name: runner
+          image: 192.168.0.71:31500/runner:latest
+          imagePullPolicy: Always
+          securityContext:
+            # Required for GPU hardware-level operations (pynvml device resets)
+            privileged: true
+            capabilities:
+              add:
+                - SYS_ADMIN # Required for CUDA device reset operations
+                - SYS_RAWIO # Required for direct hardware access
+          ports:
+            - name: grpc
+              containerPort: 50052
+              protocol: TCP
+          resources:
+            requests:
+              memory: "24Gi"
+              cpu: "16"
+              nvidia.com/gpu: "1"
+            limits:
+              memory: "30Gi"
+              cpu: "20"
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - name: ollama-models-volume
+              mountPath: /root/.ollama
+            - name: init-script
+              mountPath: /scripts
+            - name: generated-images
+              mountPath: /root/images
+            - name: code-base
+              mountPath: /app
+            - name: models
+              mountPath: /models
+          env:
+            - name: PYTHONPATH
+              value: "/app"
+            - name: RUNNER_DIR
+              value: "/app/runner"
+
+            # gRPC configuration
+            - name: GRPC_PORT
+              value: "50052"
+            - name: GRPC_MAX_WORKERS
+              value: "10"
+            - name: GRPC_MAX_MESSAGE_SIZE
+              value: "104857600"
+            - name: GRPC_MAX_CONCURRENT_RPCS
+              value: "100"
+
+            # Database configuration
+            - name: DB_HOST
+              value: "192.168.0.71"
+            - name: DB_PORT
+              value: "32345"
+            - name: DB_USER
+              value: "lsm"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            - name: DB_NAME
+              value: "llmmll"
+            - name: DB_SSLMODE
+              value: "disable"
+
+            # Redis configuration
+            - name: REDIS_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "192.168.0.71"
+            - name: REDIS_PORT
+              value: "32346"
+            - name: REDIS_DB
+              value: "0"
+            - name: REDIS_CONVERSATION_TTL
+              value: "360"
+            - name: REDIS_MESSAGE_TTL
+              value: "180"
+            - name: REDIS_SUMMARY_TTL
+              value: "720"
+            - name: REDIS_POOL_SIZE
+              value: "10"
+            - name: REDIS_MIN_IDLE_CONNECTIONS
+              value: "2"
+            - name: REDIS_CONNECT_TIMEOUT
+              value: "5"
+
+            # Logging configuration
+            - name: LOG_LEVEL
+              value: "debug"
+            - name: FORCE_COLOR
+              value: "1"
+
+            # Internal security configuration
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: internal-api-key
+                  key: api_key
+            - name: INTERNAL_ALLOWED_IPS
+              value: "192.168.0.0/24,10.43.0.0/16"
+
+            # GPU configuration
+            - name: CUDA_VISIBLE_DEVICES
+              value: "0"
+            - name: CUDA_DEVICE_ORDER
+              value: "PCI_BUS_ID"
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "compute,utility,video"
+
+            # Memory optimizations
+            - name: PYTHONMALLOC
+              value: "malloc"
+            - name: MALLOC_ARENA_MAX
+              value: "2"
+
+            # OOM Recovery
+            - name: ENABLE_INTELLIGENT_OOM_RECOVERY
+              value: "true"
+
+  strategy:
+    type: Recreate
+  replicas: 1
