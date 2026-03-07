@@ -10,8 +10,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies (in addition to system requirements)
 pip install -r requirements.txt
 
+# Install generated gRPC code (for local development)
+pip install -e runner/gen/python
+
 # Run tests
 pytest test/  # Python tests
+```
+
+### Code Generation
+
+```bash
+# Regenerate gRPC code from proto files
+./build.sh
 ```
 
 ### Model Management
@@ -20,6 +30,26 @@ pytest test/  # Python tests
 # Models are loaded from YAML/JSON config
 # Default locations: /app/.models.yaml, /app/.models.json
 # Or set MODELS_FILE_PATH env var
+```
+
+### gRPC Package Structure
+
+The runner's gRPC code is generated to `runner/gen/python/runner/v1/`:
+
+```
+runner/gen/python/
+├── runner/
+│   ├── __init__.py
+│   └── v1/
+│       ├── __init__.py
+│       ├── composer_runner_pb2.py
+│       └── composer_runner_pb2_grpc.py
+└── setup.py          # Install as editable package
+```
+
+To use the generated code:
+```python
+from runner.v1 import composer_runner_pb2, composer_runner_pb2_grpc
 ```
 
 ## Architecture
@@ -42,7 +72,12 @@ runner/                 # Main package
 │   ├── resizer.py             # Memory calculation
 │   ├── intelligent_oom_recovery.py  # OOM recovery ML
 │   └── model_loader.py        # Model config loading
-└── models/             # Pydantic models (auto-generated)
+├── server/             # gRPC server implementation
+│   └── grpc.py         # gRPC server entry point
+├── gen/                # Generated code (do not edit)
+│   └── python/         # Python generated code
+│       └── runner/     # Runner gRPC modules
+├── models/             # Pydantic models (auto-generated)
 ```
 
 ### Key Architectural Patterns
@@ -69,6 +104,8 @@ runner/                 # Main package
 | Hardware manager | `runner.utils.hardware_manager` (singleton) |
 | Model loader | `runner.utils.model_loader.ModelLoader` |
 | Llama.cpp pipeline | `runner.pipelines.llamacpp.chat.ChatLlamaCppPipeline` |
+| gRPC server | `runner.server.grpc` ( RunnerServicer class) |
+| gRPC client | `runner.v1.composer_runner_pb2_grpc.RunnerServiceStub` |
 
 ### Provider Types
 
@@ -81,3 +118,34 @@ runner/                 # Main package
 - **Embedding**: `EmbedLlamaCppPipeline`
 - **Image**: `FluxPipe` (txt2img), `FluxKontextPipe` (img2img)
 - **Multimodal**: Qwen3-VL pipeline
+
+### gRPC Architecture
+
+The runner exposes a gRPC service (`RunnerService`) for inter-service communication:
+
+- **Port**: 50052 (default)
+- **Package**: `runner.v1`
+- **Service**: `RunnerService`
+
+**RPC Methods**:
+- `CreatePipeline`: Create a pipeline from a model profile
+- `ExecutePipeline`: Execute a pipeline with streaming output
+- `GenerateEmbeddings`: Generate embeddings for texts
+- `GetCacheStats`: Get pipeline cache statistics
+- `EvictPipeline`: Evict a pipeline from cache
+
+**Generated Code**:
+- `runner.v1.composer_runner_pb2`: Protocol buffer message classes
+- `runner.v1.composer_runner_pb2_grpc`: gRPC stub and servicer classes
+
+**Package Structure**:
+```
+runner/gen/python/
+├── runner/
+│   ├── __init__.py
+│   └── v1/
+│       ├── __init__.py
+│       ├── composer_runner_pb2.py
+│       └── composer_runner_pb2_grpc.py
+└── setup.py          # Install as editable package
+```

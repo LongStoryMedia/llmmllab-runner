@@ -19,33 +19,20 @@ import grpc
 from grpc.aio import Server
 from grpc import ServicerContext
 
-# Add gen/python to path for generated code
-import sys
-import os
-
-# Get the runner package directory (parent of server/)
-runner_pkg_dir = os.path.dirname(os.path.dirname(__file__))
-gen_python_dir = os.path.join(runner_pkg_dir, "gen", "python")
-
-# Add gen/python to path for generated gRPC code
-# Must be added before any runner imports
-sys.path.insert(0, gen_python_dir)
-
-# Force reload of runner module from gen/python if already loaded from elsewhere
-if "runner" in sys.modules:
-    import importlib
-    import runner
-    importlib.reload(runner)
-
 # Import generated code from runner package
-import runner.v1.composer_runner_pb2 as composer_runner_pb2
-import runner.v1.composer_runner_pb2_grpc as composer_runner_pb2_grpc
-
-# Add runner package to path for local imports
-sys.path.insert(0, runner_pkg_dir)
+# Generated code is installed as a package via runner/gen/python/setup.py
+from runner.v1 import (
+    composer_runner_pb2,
+    composer_runner_pb2_grpc,
+)
 from runner import pipeline_factory
 from runner.models import ModelProfile, PipelinePriority
 from runner.utils.logging import llmmllogger
+from runner.server.interceptors import (
+    create_interceptor_chain,
+    get_metrics_tracker,
+    MetricsTracker,
+)
 
 
 class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
@@ -342,6 +329,7 @@ async def serve(
     port: int = 50052,
     max_workers: int = 10,
     options: Optional[list] = None,
+    enable_interceptors: bool = True,
 ) -> Server:
     """
     Start the Runner gRPC server.
@@ -350,16 +338,28 @@ async def serve(
         port: Port to listen on (default: 50052)
         max_workers: Maximum number of worker threads
         options: Optional gRPC server options
+        enable_interceptors: Whether to enable logging/metrics interceptors
 
     Returns:
         The gRPC Server instance
     """
+    # Build interceptor chain if enabled
+    interceptors = []
+    if enable_interceptors:
+        interceptors = create_interceptor_chain()
+        llmmllogger.info(
+            "gRPC server interceptors enabled",
+            extra={"interceptors": ["logging", "metrics", "deadline"]},
+        )
+
     server = grpc.aio.server(
         options=options or [
             ("grpc.max_send_message_length", -1),
             ("grpc.max_receive_message_length", -1),
+            ("grpc.use_compression", "gzip"),  # Enable compression
         ],
         maximum_concurrent_rpcs=max_workers,
+        interceptors=interceptors if interceptors else None,
     )
 
     servicer = RunnerServicer()
@@ -369,9 +369,10 @@ async def serve(
     server.add_insecure_port(f"[::]:{port}")
 
     await server.start()
-    llmmllogger.info(
+    llmmllogger.log(
         "Runner gRPC server started",
         port=port,
+        interceptors_enabled=enable_interceptors,
     )
 
     return server
@@ -385,4 +386,23 @@ async def shutdown_server(server: Server):
         server: The gRPC Server instance to shutdown
     """
     await server.stop(grace=5)
-    llmmllogger.info("Runner gRPC server shutdown complete")
+    llmmllogger.log("Runner gRPC server shutdown complete")
+
+
+async def get_server_metrics() -> dict:
+    """
+    Get current server metrics from the metrics tracker.
+
+    Returns:
+        Dictionary containing metrics summary and method stats
+    """
+    try:
+        tracker = get_metrics_tracker()
+        summary = await tracker.get_summary()
+        method_stats = await tracker.get_method_stats()
+        return {
+            "summary": summary,
+            "method_stats": method_stats,
+        }
+    except Exception as e:
+        return {"error": str(e)}

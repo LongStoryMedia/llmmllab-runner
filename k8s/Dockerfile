@@ -120,4 +120,4 @@ RUN mkdir -p /tmp/cuda_cache
 EXPOSE 50052
 
 # Run runner gRPC server
-CMD ["/opt/venv/shared/bin/python", "-m", "runner.grpc.server"]
+CMD ["/opt/venv/shared/bin/python", "-m", "runner.server.grpc"]

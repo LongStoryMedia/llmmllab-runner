@@ -27,6 +27,7 @@ dev = [
     "pytest",
     "black",
     "flake8",
+    "pylint-pydantic",
 ]
 
 [project.scripts]
