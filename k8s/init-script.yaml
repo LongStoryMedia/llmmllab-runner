@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: runner-init-script
+  name: llmmll-init-script
   namespace: llmmll
 data:
   init.sh: |

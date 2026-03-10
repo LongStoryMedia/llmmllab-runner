@@ -5,12 +5,18 @@
 
 all: build test
 
+env:
+	@echo "Setting up runner environment variables..."
+	@. ./env.sh
+	@echo "Runner environment variables set"
+	@env | grep RUNNER_ || true
+
 # =============================================================================
 # Build
 # =============================================================================
 
 build:
-	@echo "Building runner..."
+	@echo "Building .."
 	@. .venv/bin/activate && python -m compileall .
 	@echo "Runner build complete"
 
@@ -56,13 +62,13 @@ lint-fix:
 # Development
 # =============================================================================
 
-start:
+start: env
 	@echo "Starting runner in development mode..."
-	@. .venv/bin/activate && python -m runner.server.grpc
+	@. .venv/bin/activate && python -m server.grpc
 
-start-debug:
+start-debug: env
 	@echo "Starting runner with debug mode..."
-	@. .venv/bin/activate && python -m runner.server.grpc --log-level debug
+	@. .venv/bin/activate && python -m server.grpc --log-level debug
 
 # =============================================================================
 # Proto Generation

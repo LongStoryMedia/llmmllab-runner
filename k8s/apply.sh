@@ -68,4 +68,4 @@ kubectl apply -f "$(dirname "$0")/deployment.yaml" -n llmmll --wait=true
 echo "Applying service..."
 kubectl apply -f "$(dirname "$0")/service.yaml" -n llmmll --wait=true
 
-echo "Deployment complete! Runner service is available at llmmll-runner.llmmll.svc.cluster.local:50052"
+echo "Deployment complete! Runner service is available at llmmll-llmmll.svc.cluster.local:50052"

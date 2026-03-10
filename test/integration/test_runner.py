@@ -15,8 +15,9 @@ async def test_runner_imports():
     """Test that runner modules can be imported."""
     try:
         from runner import pipeline_factory, local_pipeline_cache
-        from runner.pipelines.llamacpp import ChatLlamaCppPipeline
-        from runner.utils.hardware_manager import EnhancedHardwareManager
+        from pipelines.llamacpp import ChatLlamaCppPipeline
+        from utils.hardware_manager import EnhancedHardwareManager
+
         assert True
     except ImportError as e:
         pytest.fail(f"Failed to import runner: {e}")
@@ -48,7 +49,7 @@ async def test_local_pipeline_cache_exists():
 @pytest.mark.asyncio
 async def test_hardware_manager_exists():
     """Test that the hardware manager is accessible."""
-    from runner.utils.hardware_manager import hardware_manager
+    from utils.hardware_manager import hardware_manager
 
     assert hardware_manager is not None
     assert hasattr(hardware_manager, "get_device_mappings")
@@ -60,9 +61,9 @@ async def test_hardware_manager_exists():
 @pytest.mark.asyncio
 async def test_pipeline_types():
     """Test that pipeline types are defined."""
-    from runner.pipelines.base import BasePipeline
-    from runner.pipelines.llamacpp.chat import ChatLlamaCppPipeline
-    from runner.pipelines.llamacpp.embed import EmbedLlamaCppPipeline
+    from pipelines.base import BasePipeline
+    from pipelines.llamacpp.chat import ChatLlamaCppPipeline
+    from pipelines.llamacpp.embed import EmbedLlamaCppPipeline
 
     assert BasePipeline is not None
     assert ChatLlamaCppPipeline is not None
@@ -72,7 +73,7 @@ async def test_pipeline_types():
 @pytest.mark.asyncio
 async def test_runner_models():
     """Test that runner models are accessible."""
-    from runner.models import (
+    from models import (
         ModelProfile,
         ModelProvider,
         ModelTask,
@@ -100,7 +101,7 @@ async def test_pipeline_cache_stats():
 @pytest.mark.asyncio
 async def test_gpu_detection():
     """Test that GPU detection works (if GPU is available)."""
-    from runner.utils.hardware_manager import hardware_manager
+    from utils.hardware_manager import hardware_manager
 
     device_mappings = hardware_manager.get_device_mappings()
 

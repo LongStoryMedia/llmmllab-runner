@@ -11,7 +11,7 @@ from typing import Optional, List
 import torch
 from langchain_core.tools import BaseTool
 
-from runner.models import (
+from models import (
     Model,
     Message,
     ChatResponse,

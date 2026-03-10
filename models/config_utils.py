@@ -4,12 +4,12 @@ Configuration utilities for hierarchical configuration patterns.
 
 from typing import Optional
 
-from runner.models.parameter_optimization_config import ParameterOptimizationConfig
-from runner.models.model_profile import ModelProfile
-from runner.models.user_config import UserConfig
-from runner.models.gpu_config import GPUConfig
-from runner.models.default_configs import DEFAULT_GPU_CONFIG
-from runner.utils.logging import llmmllogger
+from models.parameter_optimization_config import ParameterOptimizationConfig
+from models.model_profile import ModelProfile
+from models.user_config import UserConfig
+from models.gpu_config import GPUConfig
+from models.default_configs import DEFAULT_GPU_CONFIG
+from utils.logging import llmmllogger
 
 logger = llmmllogger.bind(component="ConfigUtils")
 
@@ -35,9 +35,7 @@ def resolve_parameter_optimization_config(
     # Check for profile-specific override first
     profile_config = getattr(profile, "parameter_optimization", None)
     if profile_config is not None:
-        logger.info(
-            f"Using profile-specific parameter optimization for {profile.name}"
-        )
+        logger.info(f"Using profile-specific parameter optimization for {profile.name}")
         return profile_config
 
     # Fall back to global user configuration

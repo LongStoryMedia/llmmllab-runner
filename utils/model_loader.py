@@ -3,9 +3,9 @@ import os
 import yaml
 from typing import Any, Dict, List, Optional
 
-from runner.models import LoraWeight, Model, ModelDetails
+from models import LoraWeight, Model, ModelDetails
 
-from ..utils.logging import llmmllogger
+from utils.logging import llmmllogger
 
 
 class ModelLoader:
@@ -40,12 +40,12 @@ class ModelLoader:
         """Load available models from YAML (preferred) or JSON (legacy) configuration.
 
         Order of precedence:
-        1. MODELS_FILE_PATH env var (can point to YAML or JSON)
+        1. RUNNER_MODELS_FILE_PATH env var (can point to YAML or JSON)
         2. /app/.models.yaml
         3. /app/.models.json (legacy fallback)
         """
         candidates: List[str] = []
-        env_path = os.environ.get("MODELS_FILE_PATH")
+        env_path = os.environ.get("RUNNER_MODELS_FILE_PATH")
         if env_path:
             candidates.append(env_path)
         candidates.extend(["/app/.models.yaml", "/app/.models.json"])

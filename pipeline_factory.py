@@ -10,15 +10,15 @@ from contextlib import contextmanager
 from langchain_core.language_models import BaseChatModel
 from langchain_core.embeddings import Embeddings
 from pydantic import BaseModel
-from runner.models import (
+from models import (
     Model,
     ModelProfile,
     ModelProvider,
     ModelTask,
     PipelinePriority,
 )
-from runner.pipelines.base import BasePipeline
-from runner.utils.logging import llmmllogger
+from pipelines.base import BasePipeline
+from utils.logging import llmmllogger
 from .pipeline_cache import LocalPipelineCacheManager
 
 try:
@@ -26,7 +26,7 @@ try:
     from .pipeline_cache import local_pipeline_cache as _GLOBAL_PIPELINE_CACHE
 except Exception:
     _GLOBAL_PIPELINE_CACHE = None
-from .utils.model_loader import ModelLoader
+from utils.model_loader import ModelLoader
 
 
 class PipelineFactory:
@@ -88,7 +88,7 @@ class PipelineFactory:
             ModelProvider.STABLE_DIFFUSION_CPP,
         }:
             self.logger.info(
-                f"📦 Using LOCAL cached path for {model_id} (provider: {provider})"
+                f"Using LOCAL cached path for {model_id} (provider: {provider})"
             )
 
             # Use a factory function that handles coordination internally
@@ -117,7 +117,7 @@ class PipelineFactory:
 
         # Remote / API providers -> create transient each call, no caching or locking needed
         self.logger.info(
-            f"🌐 Using REMOTE non-cached path for {model_id} (provider: {provider})"
+            f"Using REMOTE non-cached path for {model_id} (provider: {provider})"
         )
         pipeline = self.create_pipeline(model, profile)
         if not pipeline:
@@ -298,22 +298,22 @@ class PipelineFactory:
                 or model.task == ModelTask.VISIONTEXTTOTEXT
             ):
                 self.logger.info(
-                    f"🎯 Routing to _create_text_pipeline for vision model {model.name}"
+                    f"Routing to _create_text_pipeline for vision model {model.name}"
                 )
                 return self._create_text_pipeline(model, profile, grammar, metadata)
             if model.task == ModelTask.TEXTTOEMBEDDINGS:
                 self.logger.info(
-                    f"🎯 Routing to _create_embedding_pipeline for {model.name}"
+                    f"Routing to _create_embedding_pipeline for {model.name}"
                 )
                 return self._create_embedding_pipeline(model, profile, metadata)
             if model.task == ModelTask.TEXTTOIMAGE:
                 self.logger.info(
-                    f"🎯 Routing to _create_image_pipeline for {model.name}"
+                    f"Routing to _create_image_pipeline for {model.name}"
                 )
                 return self._create_image_pipeline(model, profile, metadata)
             if model.task == ModelTask.IMAGETOIMAGE:
                 self.logger.info(
-                    f"🎯 Routing to _create_image_to_image_pipeline for {model.name}"
+                    f"Routing to _create_image_to_image_pipeline for {model.name}"
                 )
                 return self._create_image_to_image_pipeline(model, profile, metadata)
             self.logger.error(f"Unsupported task type: {model.task}")

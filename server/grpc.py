@@ -25,14 +25,15 @@ from runner.v1 import (
     composer_runner_pb2,
     composer_runner_pb2_grpc,
 )
-from runner import pipeline_factory
-from runner.models import ModelProfile, PipelinePriority
-from runner.utils.logging import llmmllogger
-from runner.server.interceptors import (
+from pipelines import pipeline_factory
+from models import ModelProfile, PipelinePriority
+from utils.logging import llmmllogger
+from server.interceptors import (
     create_interceptor_chain,
     get_metrics_tracker,
-    MetricsTracker,
 )
+
+app_logger = llmmllogger.bind(component="RunnerGRPCServer")
 
 
 class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
@@ -347,13 +348,14 @@ async def serve(
     interceptors = []
     if enable_interceptors:
         interceptors = create_interceptor_chain()
-        llmmllogger.info(
+        app_logger.info(
             "gRPC server interceptors enabled",
             extra={"interceptors": ["logging", "metrics", "deadline"]},
         )
 
     server = grpc.aio.server(
-        options=options or [
+        options=options
+        or [
             ("grpc.max_send_message_length", -1),
             ("grpc.max_receive_message_length", -1),
             ("grpc.use_compression", "gzip"),  # Enable compression
@@ -369,7 +371,7 @@ async def serve(
     server.add_insecure_port(f"[::]:{port}")
 
     await server.start()
-    llmmllogger.log(
+    app_logger.info(
         "Runner gRPC server started",
         port=port,
         interceptors_enabled=enable_interceptors,
@@ -386,7 +388,7 @@ async def shutdown_server(server: Server):
         server: The gRPC Server instance to shutdown
     """
     await server.stop(grace=5)
-    llmmllogger.log("Runner gRPC server shutdown complete")
+    app_logger.info("Runner gRPC server shutdown complete")
 
 
 async def get_server_metrics() -> dict:
@@ -406,3 +408,40 @@ async def get_server_metrics() -> dict:
         }
     except Exception as e:
         return {"error": str(e)}
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Runner gRPC Server")
+    parser.add_argument(
+        "--port", type=int, default=50052, help="Port to listen on (default: 50052)"
+    )
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=10,
+        help="Maximum number of worker threads (default: 10)",
+    )
+    parser.add_argument(
+        "--enable-interceptors",
+        action="store_true",
+        help="Enable gRPC interceptors for logging and metrics",
+        default=True,
+    )
+    args = parser.parse_args()
+
+    loop = asyncio.get_event_loop()
+    server = loop.run_until_complete(
+        serve(
+            port=args.port,
+            max_workers=args.max_workers,
+            enable_interceptors=args.enable_interceptors,
+        )
+    )
+
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        app_logger.info("Keyboard interrupt received, shutting down server...")
+        loop.run_until_complete(shutdown_server(server))

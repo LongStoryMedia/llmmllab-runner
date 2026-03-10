@@ -8,30 +8,30 @@ where these defaults need to be updated.
 
 import uuid
 
-from runner.models.preferences_config import PreferencesConfig
-from runner.models.memory_config import MemoryConfig
-from runner.models.summarization_config import SummarizationConfig
-from runner.models.refinement_config import RefinementConfig
-from runner.models.web_search_config import WebSearchConfig
-from runner.models.image_generation_config import ImageGenerationConfig
-from runner.models.circuit_breaker_config import CircuitBreakerConfig
-from runner.models.gpu_config import GPUConfig
-from runner.models.user_config import UserConfig
-from runner.models.workflow_config import WorkflowConfig
-from runner.models.tool_config import ToolConfig
-from runner.models.parameter_optimization_config import (
+from models.preferences_config import PreferencesConfig
+from models.memory_config import MemoryConfig
+from models.summarization_config import SummarizationConfig
+from models.refinement_config import RefinementConfig
+from models.web_search_config import WebSearchConfig
+from models.image_generation_config import ImageGenerationConfig
+from models.circuit_breaker_config import CircuitBreakerConfig
+from models.gpu_config import GPUConfig
+from models.user_config import UserConfig
+from models.workflow_config import WorkflowConfig
+from models.tool_config import ToolConfig
+from models.parameter_optimization_config import (
     ParameterOptimizationConfig,
     PerformanceParameter,
     ParameterTuningStrategy,
 )
-from runner.models.crash_prevention import CrashPrevention
-from runner.models.context_window_config import (
+from models.crash_prevention import CrashPrevention
+from models.context_window_config import (
     ContextWindowConfig,
     WindowConfig,
     Prioritization,
     Optimization,
 )
-from runner.models.model_profile_config import ModelProfileConfig
+from models.model_profile_config import ModelProfileConfig
 
 # Removed circular import - DEFAULT_MODEL_PROFILE_CONFIG created inline below
 

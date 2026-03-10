@@ -1,6 +1,6 @@
 from typing import Optional, Dict, TypedDict
 
-from runner.models import Model, ModelDetails, OptimalParameters
+from models import Model, ModelDetails, OptimalParameters
 
 
 import re
@@ -347,7 +347,7 @@ class Resizer:
         cpu_memory_gb = model_size_gb * cpu_layer_proportion
 
         # Debug logging for memory breakdown
-        from runner.utils.logging import llmmllogger
+        from utils.logging import llmmllogger
 
         logger = llmmllogger.bind(component="Resizer")
         logger.debug(

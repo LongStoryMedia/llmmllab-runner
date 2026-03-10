@@ -10,8 +10,8 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
-from runner.models.config_utils import resolve_gpu_config
-from runner.utils.logging import llmmllogger
+from models.config_utils import resolve_gpu_config
+from utils.logging import llmmllogger
 
 from .base_argument_builder import BaseArgumentBuilder
 from .dynamic_flag_parser import DynamicFlagParser
@@ -24,7 +24,9 @@ class LlamaCppArgumentBuilder(BaseArgumentBuilder):
 
     def _get_executable_path(self) -> str:
         """Return the path to llama.cpp server executable."""
-        return "/llama.cpp/build/bin/llama-server"
+        return os.getenv(
+            "RUNNER_LLAMA_SERVER_EXECUTABLE", "/llama.cpp/build/bin/llama-server"
+        )
 
     def _setup_parser(self) -> None:
         """Setup llama.cpp specific argument parser with dynamically discovered flags."""
@@ -189,7 +191,7 @@ class LlamaCppArgumentBuilder(BaseArgumentBuilder):
                     f"Draft models are not supported with multimodal models. Ignoring draft model for {self.model.name}"
                 )
             else:
-                from runner.utils.model_loader import ModelLoader
+                from utils.model_loader import ModelLoader
 
                 ml = ModelLoader()
                 dm = ml.get_model_by_id(self.profile.draft_model)
