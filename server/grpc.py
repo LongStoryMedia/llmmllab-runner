@@ -10,6 +10,7 @@ The server implements:
 - GenerateEmbeddings: Generate embeddings for texts
 - GetCacheStats: Get pipeline cache statistics
 - EvictPipeline: Evict a pipeline from cache
+- HealthCheck: Check service health
 """
 
 import asyncio
@@ -270,6 +271,34 @@ class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"Failed to get cache stats: {str(e)}")
             return composer_runner_pb2.CacheStats()
+
+    async def HealthCheck(
+        self,
+        request: composer_runner_pb2.HealthCheckRequest,
+        context: ServicerContext,
+    ) -> composer_runner_pb2.HealthCheckResponse:
+        """
+        Check service health.
+
+        Args:
+            request: HealthCheckRequest with optional service name
+            context: gRPC request context
+
+        Returns:
+            HealthCheckResponse with health status
+        """
+        try:
+            self.logger.debug("HealthCheck requested")
+            return composer_runner_pb2.HealthCheckResponse(
+                healthy=True,
+                message="Runner service is healthy",
+            )
+        except Exception as e:
+            self.logger.error("HealthCheck failed", error=str(e))
+            return composer_runner_pb2.HealthCheckResponse(
+                healthy=False,
+                message=f"Runner service error: {str(e)}",
+            )
 
     async def EvictPipeline(
         self,

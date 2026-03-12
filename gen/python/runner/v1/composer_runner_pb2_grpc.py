@@ -3,6 +3,7 @@
 import grpc
 import warnings
 
+from common import version_pb2 as common_dot_version__pb2
 from runner.v1 import composer_runner_pb2 as runner_dot_v1_dot_composer__runner__pb2
 
 GRPC_GENERATED_VERSION = '1.78.0'
@@ -38,7 +39,7 @@ class RunnerServiceStub(object):
         self.CreatePipeline = channel.unary_unary(
                 '/composer_runner.v1.RunnerService/CreatePipeline',
                 request_serializer=runner_dot_v1_dot_composer__runner__pb2.CreatePipelineRequest.SerializeToString,
-                response_deserializer=runner_dot_v1_dot_composer__runner__pb2.PipelineHandle.FromString,
+                response_deserializer=runner_dot_v1_dot_composer__runner__pb2.StatusResponse.FromString,
                 _registered_method=True)
         self.ExecutePipeline = channel.unary_stream(
                 '/composer_runner.v1.RunnerService/ExecutePipeline',
@@ -48,7 +49,7 @@ class RunnerServiceStub(object):
         self.GenerateEmbeddings = channel.unary_unary(
                 '/composer_runner.v1.RunnerService/GenerateEmbeddings',
                 request_serializer=runner_dot_v1_dot_composer__runner__pb2.GenerateEmbeddingsRequest.SerializeToString,
-                response_deserializer=runner_dot_v1_dot_composer__runner__pb2.GenerateEmbeddingsResponse.FromString,
+                response_deserializer=runner_dot_v1_dot_composer__runner__pb2.StatusResponse.FromString,
                 _registered_method=True)
         self.GetCacheStats = channel.unary_unary(
                 '/composer_runner.v1.RunnerService/GetCacheStats',
@@ -58,7 +59,12 @@ class RunnerServiceStub(object):
         self.EvictPipeline = channel.unary_unary(
                 '/composer_runner.v1.RunnerService/EvictPipeline',
                 request_serializer=runner_dot_v1_dot_composer__runner__pb2.EvictPipelineRequest.SerializeToString,
-                response_deserializer=runner_dot_v1_dot_composer__runner__pb2.EvictPipelineResponse.FromString,
+                response_deserializer=runner_dot_v1_dot_composer__runner__pb2.StatusResponse.FromString,
+                _registered_method=True)
+        self.HealthCheck = channel.unary_unary(
+                '/composer_runner.v1.RunnerService/HealthCheck',
+                request_serializer=common_dot_version__pb2.HealthCheckRequest.SerializeToString,
+                response_deserializer=common_dot_version__pb2.HealthCheckResponse.FromString,
                 _registered_method=True)
 
 
@@ -101,13 +107,20 @@ class RunnerServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def HealthCheck(self, request, context):
+        """HealthCheck checks service health
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_RunnerServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreatePipeline': grpc.unary_unary_rpc_method_handler(
                     servicer.CreatePipeline,
                     request_deserializer=runner_dot_v1_dot_composer__runner__pb2.CreatePipelineRequest.FromString,
-                    response_serializer=runner_dot_v1_dot_composer__runner__pb2.PipelineHandle.SerializeToString,
+                    response_serializer=runner_dot_v1_dot_composer__runner__pb2.StatusResponse.SerializeToString,
             ),
             'ExecutePipeline': grpc.unary_stream_rpc_method_handler(
                     servicer.ExecutePipeline,
@@ -117,7 +130,7 @@ def add_RunnerServiceServicer_to_server(servicer, server):
             'GenerateEmbeddings': grpc.unary_unary_rpc_method_handler(
                     servicer.GenerateEmbeddings,
                     request_deserializer=runner_dot_v1_dot_composer__runner__pb2.GenerateEmbeddingsRequest.FromString,
-                    response_serializer=runner_dot_v1_dot_composer__runner__pb2.GenerateEmbeddingsResponse.SerializeToString,
+                    response_serializer=runner_dot_v1_dot_composer__runner__pb2.StatusResponse.SerializeToString,
             ),
             'GetCacheStats': grpc.unary_unary_rpc_method_handler(
                     servicer.GetCacheStats,
@@ -127,7 +140,12 @@ def add_RunnerServiceServicer_to_server(servicer, server):
             'EvictPipeline': grpc.unary_unary_rpc_method_handler(
                     servicer.EvictPipeline,
                     request_deserializer=runner_dot_v1_dot_composer__runner__pb2.EvictPipelineRequest.FromString,
-                    response_serializer=runner_dot_v1_dot_composer__runner__pb2.EvictPipelineResponse.SerializeToString,
+                    response_serializer=runner_dot_v1_dot_composer__runner__pb2.StatusResponse.SerializeToString,
+            ),
+            'HealthCheck': grpc.unary_unary_rpc_method_handler(
+                    servicer.HealthCheck,
+                    request_deserializer=common_dot_version__pb2.HealthCheckRequest.FromString,
+                    response_serializer=common_dot_version__pb2.HealthCheckResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -157,7 +175,7 @@ class RunnerService(object):
             target,
             '/composer_runner.v1.RunnerService/CreatePipeline',
             runner_dot_v1_dot_composer__runner__pb2.CreatePipelineRequest.SerializeToString,
-            runner_dot_v1_dot_composer__runner__pb2.PipelineHandle.FromString,
+            runner_dot_v1_dot_composer__runner__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -211,7 +229,7 @@ class RunnerService(object):
             target,
             '/composer_runner.v1.RunnerService/GenerateEmbeddings',
             runner_dot_v1_dot_composer__runner__pb2.GenerateEmbeddingsRequest.SerializeToString,
-            runner_dot_v1_dot_composer__runner__pb2.GenerateEmbeddingsResponse.FromString,
+            runner_dot_v1_dot_composer__runner__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -265,7 +283,34 @@ class RunnerService(object):
             target,
             '/composer_runner.v1.RunnerService/EvictPipeline',
             runner_dot_v1_dot_composer__runner__pb2.EvictPipelineRequest.SerializeToString,
-            runner_dot_v1_dot_composer__runner__pb2.EvictPipelineResponse.FromString,
+            runner_dot_v1_dot_composer__runner__pb2.StatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def HealthCheck(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/composer_runner.v1.RunnerService/HealthCheck',
+            common_dot_version__pb2.HealthCheckRequest.SerializeToString,
+            common_dot_version__pb2.HealthCheckResponse.FromString,
             options,
             channel_credentials,
             insecure,
