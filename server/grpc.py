@@ -22,12 +22,13 @@ from grpc import ServicerContext
 
 # Import generated code from runner package
 # Generated code is installed as a package via runner/gen/python/setup.py
+# Use runner_pb2 (package runner.v1) for compatibility with composer client
 from runner.v1 import (
-    composer_runner_pb2,
-    composer_runner_pb2_grpc,
+    runner_pb2 as composer_runner_pb2,
+    runner_pb2_grpc as composer_runner_pb2_grpc,
 )
 from common import version_pb2 as common_version_pb2
-from pipelines import pipeline_factory
+from pipelines.pipeline_factory import pipeline_factory
 from models import ModelProfile, PipelinePriority
 from utils.logging import llmmllogger
 from server.interceptors import (
@@ -87,17 +88,26 @@ class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
             )
 
             # Convert protobuf profile to ModelProfile
+            # Provide defaults for required Pydantic fields not in the proto
+            import uuid as _uuid
+            from models import ModelParameters
             model_profile = ModelProfile(
+                id=_uuid.uuid4(),
                 model_name=profile.model_name,
-                provider=profile.provider,
-                task_type=profile.task_type,
-                model_config=dict(profile.model_config),
-                gpu_config=None,  # TODO: Convert from protobuf
-                optimization_config=None,  # TODO: Convert from protobuf
+                user_id="grpc-pipeline",
+                name=profile.model_name,
+                parameters=ModelParameters(),
+                system_prompt="",
+                type=0,
+                gpu_config=None,
             )
 
             # Get pipeline from factory
-            priority_enum = PipelinePriority[priority.upper()]
+            # Priority may come as enum name or integer value from proto
+            try:
+                priority_enum = PipelinePriority[priority.upper()]
+            except KeyError:
+                priority_enum = PipelinePriority.NORMAL
             pipeline = pipeline_factory.get_pipeline(
                 profile=model_profile,
                 priority=priority_enum,

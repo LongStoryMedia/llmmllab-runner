@@ -223,6 +223,56 @@ gen/python/
 └── setup.py          # Install as editable package
 ```
 
+## Local Development
+
+### Starting the Runner
+
+```bash
+RUNNER_MODELS_FILE_PATH="$PWD/.models.yaml" PYTHONPATH="gen/python:." \
+  .venv/bin/python -m server.grpc --port 50052
+```
+
+### Known Issues
+
+**Proto package mismatch**: The runner's `gen/python/runner/v1/` contains two sets of generated code:
+- `composer_runner_pb2.py` — old package `composer_runner.v1` (from `composer_runner.proto`)
+- `runner_pb2.py` — current package `runner.v1` (from canonical `runner/v1/runner.proto`)
+
+The composer client calls `runner.v1.RunnerService`. If the runner imports from `composer_runner_pb2`, gRPC returns "Method not found!". Fix: in `server/grpc.py`, alias the import:
+
+```python
+from runner.v1 import (
+    runner_pb2 as composer_runner_pb2,
+    runner_pb2_grpc as composer_runner_pb2_grpc,
+)
+```
+
+**Interceptor bug**: The `DeadlineInterceptor` in `server/interceptors.py` tries to set a read-only attribute (`handler.unary_unary = ...`). Workaround: start with `enable_interceptors=False`.
+
+**ModelProfile Pydantic vs Proto mismatch**: The Pydantic `ModelProfile` requires fields (`id`, `user_id`, `name`, `parameters`, `system_prompt`, `type`) not present in the proto `ModelProfile`. The `CreatePipeline` handler must provide defaults.
+
+**PipelineFactory import**: `pipeline_factory` is a module-level *instance* in `pipelines/pipeline_factory.py`, not the module itself. Import as `from pipelines.pipeline_factory import pipeline_factory`.
+
+### Model Configuration
+
+The runner needs a `.models.yaml` file to know about available models. Set via `RUNNER_MODELS_FILE_PATH` env var. The file must be a **flat YAML list** (not nested under a key):
+
+```yaml
+- id: "model-id"
+  name: "Display Name"
+  model: "model-id"
+  task: "TextToText"
+  modified_at: "2026-01-01T00:00:00Z"
+  digest: "some-digest"
+  provider: "llama_cpp"
+  details:
+    family: "qwen"
+    parameter_size: "30B"
+    quantization_level: "Q4_K_M"
+```
+
+Without this file, `get_pipeline` raises "Model not found".
+
 ## Dependencies
 
 - **llmmllab-schemas** - YAML schema definitions (for models)
