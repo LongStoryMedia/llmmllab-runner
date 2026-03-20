@@ -2,9 +2,10 @@
 Shared utility modules for the inference system.
 """
 
-# Only expose logging - other modules have external dependencies
 from .logging import llmmllogger
+from .hardware_manager import hardware_manager
 
 __all__ = [
     "llmmllogger",
+    "hardware_manager",
 ]

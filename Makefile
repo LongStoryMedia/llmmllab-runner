@@ -64,7 +64,7 @@ lint-fix:
 
 start: env
 	@echo "Starting runner in development mode..."
-	@. .venv/bin/activate && python -m server.grpc
+	@. .venv/bin/activate && PYTHONPATH="gen/python:." python -m server.grpc
 
 start-debug: env
 	@echo "Starting runner with debug mode..."

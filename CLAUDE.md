@@ -2,7 +2,77 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in the llmmllab-runner repository.
 
-## Commands
+## Repository Structure
+
+The llmmllab ecosystem consists of several interconnected repositories:
+
+```
+schemas/              # YAML schema definitions (standalone repo at ../schemas)
+├── llmmllab-schemas  # Git submodule in each app, defines all data models
+
+proto/                # Protocol Buffer definitions (at ../proto)
+├── llmmllab-schemas  # Git submodule (schemas)
+├── llmmllab-proto    # Generated proto messages
+└── Makefile          # Target: `make messages`
+
+runner/               # This repository (at ./)
+├── llmmllab-schemas  # Git submodule
+├── llmmllab-proto    # Git submodule (proto)
+├── models/           # Generated Pydantic models
+└── Makefile          # Targets: `make models`, `make proto`
+
+composer/             # ../composer
+├── llmmllab-schemas  # Git submodule
+├── llmmllab-proto    # Git submodule (proto)
+├── models/           # Generated Pydantic models
+└── Makefile          # Targets: `make models`, `make proto`
+
+server/               # ../server
+├── llmmllab-schemas  # Git submodule
+├── llmmllab-proto    # Git submodule (proto)
+├── models/           # Generated Pydantic models
+└── Makefile          # Targets: `make models`, `make proto`
+```
+
+## Code Generation Workflow
+
+### ⚠️ CRITICAL: Never Edit Generated Files
+
+- **`models/*.py`** - Generated from llmmllab-schemas YAML files
+- **`llmmllab-proto/*.proto`** messages - Generated from llmmllab-schemas YAML files
+- **`gen/python/**/*.py`** - Generated from proto files via protoc
+
+All generated code must be regenerated from source schemas. Manual edits will be lost and cause inconsistencies.
+
+### To Update a Model or Proto Message
+
+1. **Update the YAML schema** in the schemas repository (`../schemas`)
+2. **Commit and push** the schema changes to main
+3. **In `../proto`**:
+   ```bash
+   git submodule update --init --recursive --remote
+   make messages
+   ```
+   Commit and push the generated proto messages to main
+4. **In each application** (`runner`, `composer`, `server`):
+   ```bash
+   git submodule update --init --recursive --remote
+   make models
+   ```
+   Commit the generated models
+
+### To Update gRPC Services
+
+1. **Update the `.proto` service definition** in `../proto`
+2. **Commit and push** to main
+3. **In each affected application**:
+   ```bash
+   git submodule update --init --recursive --remote
+   make proto
+   ```
+   Commit the regenerated gRPC code
+
+### Commands
 
 ### Development
 
@@ -20,6 +90,9 @@ pytest test/  # Python tests
 ### Code Generation
 
 ```bash
+# Regenerate Pydantic models from llmmllab-schemas
+make models
+
 # Regenerate gRPC code from proto files
 make proto
 ```

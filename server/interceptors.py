@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 import grpc
 from grpc import ServicerContext
 from grpc.aio import ServerInterceptor
+from grpc import HandlerCallDetails, RpcMethodHandler
 
 # Type alias for metadata (grpc._metadata._Metadata is internal, use dict)
 Metadata = dict[str, str]
@@ -152,13 +153,12 @@ class LoggingInterceptor(ServerInterceptor):
 
     async def intercept_service(
         self,
-        continuation: Callable[[ServicerContext], Any],
-        handler: Any,
-        context: ServicerContext,
-    ) -> Any:
+        continuation: Callable[[HandlerCallDetails], Any],
+        handler_call_details: HandlerCallDetails,
+    ) -> RpcMethodHandler:
         """Intercept and log all gRPC calls."""
-        method_name = _ContextProxy.get_method(context)
-        peer = context.peer() if hasattr(context, "peer") else "unknown"
+        method_name = handler_call_details.method if handler_call_details else "unknown"
+        peer = "unknown"
 
         start_time = time.time()
         request_info = {
@@ -166,41 +166,57 @@ class LoggingInterceptor(ServerInterceptor):
             "peer": peer,
         }
 
-        # Try to get request size from context
+        # Try to get metadata from handler_call_details
         try:
-            metadata = _ContextProxy.get_metadata(context)
-            request_info["metadata"] = metadata
+            if handler_call_details and hasattr(handler_call_details, 'invocation_metadata'):
+                metadata = handler_call_details.invocation_metadata
+                if metadata:
+                    request_info["metadata"] = dict(metadata)
         except Exception:
             pass
 
         self.logger.info("gRPC request started", extra={"grpc": request_info})
 
-        try:
-            result = await continuation(handler, context)
-            return result
-        except Exception as e:
-            self.logger.error(
-                "gRPC request failed",
-                extra={
-                    "grpc": {
-                        "method": method_name,
-                        "error": str(e),
-                    }
-                },
-            )
-            raise
-        finally:
-            duration_ms = (time.time() - start_time) * 1000
-            self.logger.info(
-                "gRPC request completed",
-                extra={
-                    "grpc": {
-                        "method": method_name,
-                        "duration_ms": duration_ms,
-                        "peer": peer,
-                    }
-                },
-            )
+        # Get the handler
+        handler = await continuation(handler_call_details)
+
+        # Wrap the handler to log completion - only wrap if handler has the attribute
+        if handler and handler.unary_unary is not None:
+            original_unary_unary = handler.unary_unary
+
+            async def logged_unary_unary(request, context):
+                try:
+                    result = await original_unary_unary(request, context)
+                    return result
+                except Exception as e:
+                    duration_ms = (time.time() - start_time) * 1000
+                    self.logger.error(
+                        "gRPC request failed",
+                        extra={
+                            "grpc": {
+                                "method": method_name,
+                                "duration_ms": duration_ms,
+                                "error": str(e),
+                            }
+                        },
+                    )
+                    raise
+                finally:
+                    duration_ms = (time.time() - start_time) * 1000
+                    self.logger.info(
+                        "gRPC request completed",
+                        extra={
+                            "grpc": {
+                                "method": method_name,
+                                "duration_ms": duration_ms,
+                                "peer": peer,
+                            }
+                        },
+                    )
+
+            handler.unary_unary = logged_unary_unary
+
+        return handler
 
 
 class MetricsInterceptor(ServerInterceptor):
@@ -219,41 +235,50 @@ class MetricsInterceptor(ServerInterceptor):
 
     async def intercept_service(
         self,
-        continuation: Callable[[ServicerContext], Any],
-        handler: Any,
-        context: ServicerContext,
-    ) -> Any:
+        continuation: Callable[[HandlerCallDetails], Any],
+        handler_call_details: HandlerCallDetails,
+    ) -> RpcMethodHandler:
         """Intercept and record metrics for all gRPC calls."""
-        method_name = _ContextProxy.get_method(context)
+        method_name = handler_call_details.method if handler_call_details else "unknown"
 
         start_time = time.time()
-        status_code = None
-        error = None
 
-        try:
-            result = await continuation(handler, context)
-            return result
-        except grpc.RpcError as e:
-            status_code = e.code().name if hasattr(e, "code") else "UNKNOWN"
-            error = str(e)
-            raise
-        except Exception as e:
-            status_code = "INTERNAL"
-            error = str(e)
-            raise
-        finally:
-            duration_ms = (time.time() - start_time) * 1000
-            metrics = RequestMetrics(
-                method=method_name,
-                start_time=start_time,
-                end_time=time.time(),
-                duration_ms=duration_ms,
-                status_code=status_code,
-                error=error,
-            )
-            # Note: request/response size tracking requires additional context
-            # This is a simplified version without size tracking
-            await self.metrics_tracker.record(metrics)
+        # Get the handler
+        handler = await continuation(handler_call_details)
+
+        # Wrap the handler to record metrics - only wrap if handler has the attribute
+        if handler and handler.unary_unary is not None:
+            original_unary_unary = handler.unary_unary
+
+            async def metrics_unary_unary(request, context):
+                status_code = None
+                error = None
+                try:
+                    result = await original_unary_unary(request, context)
+                    return result
+                except grpc.RpcError as e:
+                    status_code = e.code().name if hasattr(e, "code") else "UNKNOWN"
+                    error = str(e)
+                    raise
+                except Exception as e:
+                    status_code = "INTERNAL"
+                    error = str(e)
+                    raise
+                finally:
+                    duration_ms = (time.time() - start_time) * 1000
+                    metrics = RequestMetrics(
+                        method=method_name,
+                        start_time=start_time,
+                        end_time=time.time(),
+                        duration_ms=duration_ms,
+                        status_code=status_code,
+                        error=error,
+                    )
+                    await self.metrics_tracker.record(metrics)
+
+            handler.unary_unary = metrics_unary_unary
+
+        return handler
 
 
 class DeadlineInterceptor(ServerInterceptor):
@@ -269,37 +294,50 @@ class DeadlineInterceptor(ServerInterceptor):
 
     async def intercept_service(
         self,
-        continuation: Callable[[ServicerContext], Any],
-        handler: Any,
-        context: ServicerContext,
-    ) -> Any:
+        continuation: Callable[[HandlerCallDetails], Any],
+        handler_call_details: HandlerCallDetails,
+    ) -> RpcMethodHandler:
         """Intercept and enforce deadlines for gRPC calls."""
-        # Get deadline from context
-        if hasattr(context, "time_remaining") and context.time_remaining is not None:
-            try:
-                time_remaining = context.time_remaining()
-                if time_remaining is not None:
-                    deadline_ms = time_remaining * 1000
-                    if deadline_ms < self.default_deadline_ms:
-                        self.logger.warning(
-                            "Request approaching deadline",
-                            extra={
-                                "grpc": {
-                                    "method": _ContextProxy.get_method(context),
-                                    "time_remaining_ms": deadline_ms,
-                                }
-                            },
-                        )
-            except Exception:
-                pass
+        method_name = handler_call_details.method if handler_call_details else "unknown"
 
-        try:
-            result = await continuation(handler, context)
-            return result
-        except asyncio.TimeoutError:
-            context.set_code(grpc.StatusCode.DEADLINE_EXCEEDED)
-            context.set_details("Request deadline exceeded")
-            raise
+        # Get the handler
+        handler = await continuation(handler_call_details)
+
+        # Wrap the handler to check deadlines - only wrap if handler has the attribute
+        if handler and handler.unary_unary is not None:
+            original_unary_unary = handler.unary_unary
+
+            async def deadline_unary_unary(request, context):
+                # Get deadline from context
+                if hasattr(context, "time_remaining") and context.time_remaining is not None:
+                    try:
+                        time_remaining = context.time_remaining()
+                        if time_remaining is not None:
+                            deadline_ms = time_remaining * 1000
+                            if deadline_ms < self.default_deadline_ms:
+                                self.logger.warning(
+                                    "Request approaching deadline",
+                                    extra={
+                                        "grpc": {
+                                            "method": method_name,
+                                            "time_remaining_ms": deadline_ms,
+                                        }
+                                    },
+                                )
+                    except Exception:
+                        pass
+
+                try:
+                    result = await original_unary_unary(request, context)
+                    return result
+                except asyncio.TimeoutError:
+                    context.set_code(grpc.StatusCode.DEADLINE_EXCEEDED)
+                    context.set_details("Request deadline exceeded")
+                    raise
+
+            handler.unary_unary = deadline_unary_unary
+
+        return handler
 
 
 # Global metrics tracker instance

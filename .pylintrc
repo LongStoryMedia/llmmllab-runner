@@ -1,0 +1,18 @@
+[MASTER]
+# Add gen/python to the path so pylint can find generated modules
+init-hook='import sys; sys.path.insert(0, "gen/python-stubs"); sys.path.insert(0, "gen/python"); sys.path.insert(0, ".")'
+
+# Ignore generated files
+ignore=gen
+
+[MESSAGES CONTROL]
+# We use init-hook to fix imports, so disable import errors for generated code
+
+[TYPECHECK]
+# Don't check for missing members in generated protobuf code
+ignored-classes=google.protobuf.message.Message,runner_pb2,runner_pb2_grpc,server_pb2,server_pb2_grpc,composer_pb2,composer_pb2_grpc,timestamp_pb2,version_pb2,runner_dot_v1_dot_runner__pb2,common_dot_version__pb2,common_dot_timestamp__pb2
+# Also ignore the generated module names
+ignored-modules=runner.v1.runner_pb2,runner.v1.runner_pb2_grpc,server.v1.server_pb2,server.v1.server_pb2_grpc,composer.v1.composer_pb2,composer.v1.composer_pb2_grpc,common.timestamp_pb2,common.version_pb2
+
+[FORMAT]
+max-line-length=120

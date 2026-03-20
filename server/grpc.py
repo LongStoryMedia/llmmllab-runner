@@ -26,6 +26,7 @@ from runner.v1 import (
     composer_runner_pb2,
     composer_runner_pb2_grpc,
 )
+from common import version_pb2 as common_version_pb2
 from pipelines import pipeline_factory
 from models import ModelProfile, PipelinePriority
 from utils.logging import llmmllogger
@@ -274,9 +275,9 @@ class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
 
     async def HealthCheck(
         self,
-        request: composer_runner_pb2.HealthCheckRequest,
+        request: common_version_pb2.HealthCheckRequest,
         context: ServicerContext,
-    ) -> composer_runner_pb2.HealthCheckResponse:
+    ) -> common_version_pb2.HealthCheckResponse:
         """
         Check service health.
 
@@ -289,13 +290,13 @@ class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
         """
         try:
             self.logger.debug("HealthCheck requested")
-            return composer_runner_pb2.HealthCheckResponse(
+            return common_version_pb2.HealthCheckResponse(
                 healthy=True,
                 message="Runner service is healthy",
             )
         except Exception as e:
             self.logger.error("HealthCheck failed", error=str(e))
-            return composer_runner_pb2.HealthCheckResponse(
+            return common_version_pb2.HealthCheckResponse(
                 healthy=False,
                 message=f"Runner service error: {str(e)}",
             )

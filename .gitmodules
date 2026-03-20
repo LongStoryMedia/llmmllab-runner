@@ -1,0 +1,8 @@
+[submodule "llmmllab-proto"]
+	path = llmmllab-proto
+	url = git@github.com:LongStoryMedia/llmmllab-proto.git
+	branch = main
+[submodule "llmmllab-schemas"]
+	path = llmmllab-schemas
+	url = git@github.com:LongStoryMedia/llmmllab-schemas.git
+	branch = main
