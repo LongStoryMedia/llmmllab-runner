@@ -26,6 +26,7 @@ googleapis-common-protos==1.73.0  # For google.api proto imports
 protobuf==6.33.5
 structlog==25.5.0
 langchain-core==1.2.20  # For BaseChatModel pipeline interface
+openai>=1.0.0  # For llama.cpp OpenAI-compatible API client
 rich==14.0.0  # For structured logging exception formatting
 torch==2.10.0
 psutil==7.2.2

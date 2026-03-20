@@ -1,18 +1,27 @@
 """
-LangChain ChatOpenAI adapter for llama.cpp integration.
+OpenAI SDK adapter for llama.cpp integration.
 
-This provides a simple adapter that creates a ChatOpenAI instance connected
-to our llama.cpp server and exposes it for use with composer agents.
+Creates an OpenAI client connected to the local llama.cpp server and
+exposes it as a BaseChatModel (langchain_core) for use with composer agents.
+Replaces the previous langchain_openai.ChatOpenAI dependency.
 """
 
 import json
 import os
 from typing import Any, Dict, Iterator, List, Optional, Type
+
 from langchain_core.callbacks import CallbackManagerForLLMRun
-from langchain_core.messages import BaseMessage, AIMessageChunk
-from langchain_core.outputs import ChatResult, ChatGenerationChunk
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
+from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from langchain_core.tools import BaseTool
-from langchain_openai import ChatOpenAI
+from openai import OpenAI
 from pydantic import BaseModel
 
 from models import Model, ModelProfile, ModelProfileType
@@ -20,7 +29,7 @@ from pipelines.base import BasePipeline
 from server_manager import LlamaCppServerManager
 from utils.logging import llmmllogger
 
-logger = llmmllogger.bind(component="LangChainChatOpenAIPipeline")
+logger = llmmllogger.bind(component="ChatLlamaCppPipeline")
 
 
 class ReasoningAwareAIMessageChunk(AIMessageChunk):
@@ -31,55 +40,13 @@ class ReasoningAwareAIMessageChunk(AIMessageChunk):
         self.reasoning_content = reasoning_content
 
 
-class ReasoningChatOpenAI(ChatOpenAI):
-    """Custom ChatOpenAI that captures reasoning_content from delta responses."""
-
-    def _convert_chunk_to_generation_chunk(
-        self,
-        chunk: dict,
-        default_chunk_class: type,
-        base_generation_info: dict | None,
-    ) -> ChatGenerationChunk | None:
-        """Override to capture reasoning_content from delta responses."""
-        # Get the standard generation chunk first
-        generation_chunk = super()._convert_chunk_to_generation_chunk(
-            chunk, default_chunk_class, base_generation_info
-        )
-
-        if generation_chunk is None:
-            return None
-
-        # Check if any choice has reasoning_content in the delta
-        choices = chunk.get("choices", [])
-        if choices and len(choices) > 0:
-            choice = choices[0]
-            delta = choice.get("delta", {})
-            reasoning_content = delta.get("reasoning_content", "")
-            finish_reason = choice.get("finish_reason")
-
-            if finish_reason:
-                logger.debug(
-                    "Stream finished",
-                    extra={"finish_reason": finish_reason},
-                )
-
-            if reasoning_content and isinstance(
-                generation_chunk.message, AIMessageChunk
-            ):
-                # Create enhanced chunk with reasoning content
-                enhanced_message: ReasoningAwareAIMessageChunk = generation_chunk.message  # type: ignore[assignment]
-                enhanced_message.reasoning_content = reasoning_content
-                generation_chunk.message = enhanced_message
-
-        return generation_chunk
-
-
 class ChatLlamaCppPipeline(BasePipeline):
     """
-    Simple adapter that creates a ChatOpenAI instance connected to llama.cpp server.
+    OpenAI SDK adapter connected to a local llama.cpp server.
 
-    This maintains compatibility with our existing pipeline architecture while
-    providing access to LangChain's built-in tool calling support.
+    Implements BaseChatModel._generate and _stream by talking directly to
+    the llama.cpp OpenAI-compatible /v1/chat/completions endpoint via the
+    official ``openai`` Python SDK, removing the langchain_openai dependency.
     """
 
     def __init__(
@@ -103,159 +70,147 @@ class ChatLlamaCppPipeline(BasePipeline):
             user_config=self.user_config,
         )
 
-        # Initialize ChatOpenAI instance
-        self.chat_model: Optional[ReasoningChatOpenAI] = None
+        self._openai_client: Optional[OpenAI] = None
         self.started = False
         self.metadata = metadata or {}
 
-        # Initialize server and ChatOpenAI
+        # Tool state for disable_streaming="tool_calling" equivalent
+        self._bound_tools: Optional[list] = None
+        self._tool_choice: Optional[str] = None
+
+        # Extra body params forwarded to llama.cpp (e.g. chat_template_kwargs)
+        self._extra_body: dict = {
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
+
+        # Initialize server and client
         self._initialize_persistent_server()
 
     def _initialize_persistent_server(self):
-        """Initialize llama.cpp server and create ChatOpenAI instance."""
+        """Initialize llama.cpp server and create OpenAI client."""
         try:
             self._logger.info(f"Starting server for model {self.model.name}")
             assert self.server_manager is not None
-            # Start the llama.cpp server
             self.started = self.server_manager.start()
             if not self.started:
                 raise RuntimeError(
                     f"Failed to start server for model {self.model.name}"
                 )
 
-            # Create ChatOpenAI instance pointing to our llama.cpp server
-            self._initialize_chat_openai()
+            base_url = self.server_manager.get_api_endpoint("")
+
+            self._openai_client = OpenAI(
+                base_url=base_url,
+                api_key="not-needed",
+                timeout=float(self.server_manager.startup_timeout),
+                max_retries=1,
+            )
 
             self._logger.info(
-                f"LangChain ChatOpenAI pipeline ready for {self.model.name}"
+                f"OpenAI SDK client initialized with base_url: {base_url}"
             )
 
         except Exception as e:
-            self._logger.error(f"Failed to initialize server and ChatOpenAI: {e}")
+            self._logger.error(f"Failed to initialize server and OpenAI client: {e}")
             raise
 
-    def _initialize_chat_openai(self):
-        """Initialize ChatOpenAI instance to connect to llama.cpp server."""
-        try:
-            assert self.server_manager is not None
-            # Get the base URL from server manager
-            base_url = self.server_manager.get_api_endpoint("")  # Gets /v1 endpoint
+    # ------------------------------------------------------------------
+    # Message conversion helpers
+    # ------------------------------------------------------------------
 
-            # Extract model parameters from profile
-            # params = self._build_chat_model_params()
+    @staticmethod
+    def _convert_messages(messages: List[BaseMessage]) -> List[dict]:
+        """Convert langchain BaseMessage list to OpenAI message dicts."""
+        result: List[dict] = []
+        for msg in messages:
+            if isinstance(msg, SystemMessage):
+                result.append({"role": "system", "content": msg.content})
+            elif isinstance(msg, HumanMessage):
+                result.append({"role": "user", "content": msg.content})
+            elif isinstance(msg, AIMessage):
+                d: Dict[str, Any] = {"role": "assistant"}
+                if msg.content:
+                    d["content"] = msg.content
+                if hasattr(msg, "tool_calls") and msg.tool_calls:
+                    d["tool_calls"] = [
+                        {
+                            "id": tc.get("id", ""),
+                            "type": "function",
+                            "function": {
+                                "name": tc.get("name", ""),
+                                "arguments": json.dumps(tc.get("args", {})),
+                            },
+                        }
+                        for tc in msg.tool_calls
+                    ]
+                result.append(d)
+            elif isinstance(msg, ToolMessage):
+                result.append(
+                    {
+                        "role": "tool",
+                        "content": (
+                            msg.content
+                            if isinstance(msg.content, str)
+                            else json.dumps(msg.content)
+                        ),
+                        "tool_call_id": msg.tool_call_id,
+                    }
+                )
+            else:
+                result.append({"role": "user", "content": str(msg.content)})
+        return result
 
-            # Create ChatOpenAI instance with debug logging
-            # disable_streaming="tool_calling" makes LangChain fall back to
-            # a single non-streaming API call whenever tools are bound.
-            # This avoids "Invalid diff: now finding less tool calls!"
-            # errors from LangChain's streaming tool-call diff tracker,
-            # which are triggered by llama.cpp's GLM 4.5 chat format
-            # producing chunk sequences that LangChain cannot reconcile.
-            # Trade-off: text responses are not token-streamed when tools
-            # are bound (Copilot always sends tools), but tool calling
-            # is reliable.  Content still arrives via on_chat_model_end.
+    def _build_request_kwargs(self, **kwargs) -> dict:
+        """Build common kwargs for the OpenAI completions call."""
+        profile_max = self.profile.parameters.max_tokens
+        max_tokens = profile_max if (profile_max and profile_max > 0) else None
 
-            # Resolve max_tokens: profile uses -1 for "unlimited", but the
-            # OpenAI SDK requires a positive int or omission.  llama.cpp
-            # defaults to ctx_size when max_tokens is not sent, which is what
-            # we want.
-            profile_max = self.profile.parameters.max_tokens
-            max_tokens = profile_max if (profile_max and profile_max > 0) else None
-
-            self.chat_model = ReasoningChatOpenAI(
-                base_url=base_url,
-                api_key=lambda: "not-needed",  # llama.cpp server doesn't require auth
-                model="local-model",  # Standard llama.cpp model name
-                max_retries=1,
-                timeout=self.server_manager.startup_timeout,
-                temperature=self.profile.parameters.temperature or 0.7,
-                max_tokens=max_tokens,  # type: ignore[assignment]
-                top_p=self.profile.parameters.top_p or 0.9,
-                disable_streaming="tool_calling",
-                verbose=os.getenv("LOG_LEVEL", "WARNING").lower() == "trace",
-                # NOTE: reasoning_effort and seed are intentionally omitted.
-                # reasoning_effort is an OpenAI o1/o3-only parameter that
-                # llama.cpp does not support.  seed is omitted because -1
-                # is not a valid value for the OpenAI SDK and llama.cpp
-                # defaults to random when unset.
-                extra_body={
-                    # Disable thinking mode via the Jinja chat template.
-                    # GLM-4.7-Flash's template checks `enable_thinking` and
-                    # emits <|assistant|></think> (no thinking) when false, vs
-                    # <|assistant|><think> (thinking enabled) when true/default.
-                    #
-                    # With thinking enabled, the model wastes tokens planning
-                    # instead of acting — it generates a brief internal plan
-                    # then hits EOS without producing tool_calls or content.
-                    # Disabling it forces the model to generate content/tool
-                    # calls directly, dramatically improving reliability.
-                    #
-                    # The key must be `chat_template_kwargs` (NOT a top-level
-                    # `thinking` or `enable_thinking`) — only this form is
-                    # forwarded by llama.cpp to the Jinja template renderer.
-                    "chat_template_kwargs": {"enable_thinking": False},
-                },
-                metadata={
-                    "model_profile": self.profile.name,
-                    "task": ModelProfileType(self.profile.type).name,
-                    **(self.metadata or {}),
-                },
-            )
-
-            self._logger.info(f"ChatOpenAI initialized with base_url: {base_url}")
-
-        except Exception as e:
-            self._logger.error(f"Failed to initialize ChatOpenAI: {e}")
-            raise
-
-    def get_chat_model(self) -> ReasoningChatOpenAI:
-        """Get the underlying ReasoningCaptureChatOpenAI instance for direct LangChain use."""
-        if not self.chat_model:
-            raise RuntimeError("ChatOpenAI not initialized")
-        return self.chat_model
-
-    def shutdown(self):
-        """Shutdown the llama.cpp server."""
-        if self.started and hasattr(self, "server_manager"):
-            self._logger.info(f"Shutting down server for {self.model.name}")
-            self.server_manager.stop()
-            self.started = False
-
-    def bind_metadata(self, metadata: dict):
-        """Bind additional metadata to the pipeline.
-
-        Existing metadata keys will be overwritten if they exist in the new metadata.
-        """
-        if not self.chat_model:
-            raise RuntimeError("ChatOpenAI not initialized")
-        if not self.metadata:
-            self.metadata = {}
-
-        # Use update() which overwrites existing keys with same names
-        self.metadata.update(metadata)
-
-        if not self.chat_model.metadata:
-            self.chat_model.metadata = {}  # type: ignore[assignment]
-        self.chat_model.metadata.update(metadata)
-
-        return self.chat_model
-
-    def __del__(self):
-        """Cleanup when pipeline is destroyed."""
-        self.shutdown()
-
-    @property
-    def _llm_type(self) -> str:
-        return "langchain_chatopenai_llamacpp"
-
-    @property
-    def _identifying_params(self) -> Dict[str, Any]:
-        assert self.server_manager is not None
-        return {
-            "model_name": self.model.name,
-            "server_port": self.server_manager.port,
-            "pipeline_type": "langchain_chatopenai",
+        req: Dict[str, Any] = {
+            "model": "local-model",
+            "temperature": self.profile.parameters.temperature or 0.7,
+            "top_p": self.profile.parameters.top_p or 0.9,
         }
+        if max_tokens:
+            req["max_tokens"] = max_tokens
+
+        # Tools from bind_tools() via RunnableBinding kwargs, or stored directly
+        tools = kwargs.pop("tools", None) or self._bound_tools
+        if tools:
+            req["tools"] = tools
+            if self._tool_choice:
+                req["tool_choice"] = self._tool_choice
+
+        if self._extra_body:
+            req["extra_body"] = self._extra_body
+
+        stop = kwargs.pop("stop", None)
+        if stop:
+            req["stop"] = stop
+
+        return req
+
+    @staticmethod
+    def _parse_tool_calls(message) -> list:
+        """Extract tool calls from an OpenAI response message."""
+        if not hasattr(message, "tool_calls") or not message.tool_calls:
+            return []
+        return [
+            {
+                "name": tc.function.name,
+                "args": (
+                    json.loads(tc.function.arguments)
+                    if tc.function.arguments
+                    else {}
+                ),
+                "id": tc.id,
+                "type": "tool_call",
+            }
+            for tc in message.tool_calls
+        ]
+
+    # ------------------------------------------------------------------
+    # BaseChatModel interface
+    # ------------------------------------------------------------------
 
     def _generate(
         self,
@@ -264,20 +219,43 @@ class ChatLlamaCppPipeline(BasePipeline):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs,
     ) -> ChatResult:
-        """Generate chat completions given input messages."""
-        if not self.chat_model:
-            raise RuntimeError("ChatOpenAI not initialized")
+        """Generate chat completions (non-streaming)."""
+        if not self._openai_client:
+            raise RuntimeError("OpenAI client not initialized")
 
         self._logger.debug(
-            f"Generating with messages: {json.dumps([m.model_dump() for m in messages], indent=4)}"
+            f"Generating with {len(messages)} messages"
         )
 
-        # Use protected method with type ignore for compatibility
-        return self.chat_model._generate(  # type: ignore[attr-defined]
-            messages=messages,
-            stop=stop,
-            run_manager=run_manager,
-            **kwargs,
+        oai_messages = self._convert_messages(messages)
+        req = self._build_request_kwargs(stop=stop, **kwargs)
+
+        response = self._openai_client.chat.completions.create(
+            messages=oai_messages,
+            stream=False,
+            **req,
+        )
+
+        choice = response.choices[0]
+        content = choice.message.content or ""
+        tool_calls = self._parse_tool_calls(choice.message)
+
+        ai_message = AIMessage(
+            content=content,
+            tool_calls=tool_calls,
+            response_metadata={
+                "finish_reason": choice.finish_reason,
+                "model": response.model,
+            },
+        )
+
+        generation = ChatGeneration(message=ai_message)
+        return ChatResult(
+            generations=[generation],
+            llm_output={
+                "model": response.model,
+                "usage": response.usage.model_dump() if response.usage else {},
+            },
         )
 
     def _stream(
@@ -287,27 +265,165 @@ class ChatLlamaCppPipeline(BasePipeline):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs,
     ) -> Iterator[ChatGenerationChunk]:
-        """Stream chat completions given input messages."""
-        if not self.chat_model:
-            raise RuntimeError("ChatOpenAI not initialized")
+        """Stream chat completions with reasoning_content support.
 
-        self._logger.debug(
-            f"Streaming with messages: {json.dumps([m.model_dump() for m in messages], indent=4)}"
+        When tools are bound, falls back to _generate to avoid streaming
+        tool-call diff errors from llama.cpp (equivalent to the old
+        ``disable_streaming="tool_calling"`` on ChatOpenAI).
+        """
+        if not self._openai_client:
+            raise RuntimeError("OpenAI client not initialized")
+
+        # Fallback to non-streaming when tools are present to avoid
+        # "Invalid diff: now finding less tool calls!" errors.
+        tools = kwargs.get("tools") or self._bound_tools
+        if tools:
+            result = self._generate(
+                messages, stop=stop, run_manager=run_manager, **kwargs
+            )
+            for gen in result.generations:
+                chunk = ChatGenerationChunk(
+                    message=AIMessageChunk(
+                        content=gen.message.content or "",
+                        tool_calls=getattr(gen.message, "tool_calls", []),
+                        response_metadata=gen.message.response_metadata,
+                    ),
+                    generation_info=gen.generation_info,
+                )
+                if run_manager:
+                    run_manager.on_llm_new_token(
+                        gen.message.content or "", chunk=chunk
+                    )
+                yield chunk
+            return
+
+        self._logger.debug(f"Streaming with {len(messages)} messages")
+
+        oai_messages = self._convert_messages(messages)
+        req = self._build_request_kwargs(stop=stop, **kwargs)
+
+        stream = self._openai_client.chat.completions.create(
+            messages=oai_messages,
+            stream=True,
+            **req,
         )
 
-        # Use protected method with type ignore for compatibility
-        return self.chat_model._stream(  # type: ignore[attr-defined]
-            messages=messages,
-            stop=stop,
-            run_manager=run_manager,
-            **kwargs,
-        )
+        for event in stream:
+            if not event.choices:
+                continue
+
+            choice = event.choices[0]
+            delta = choice.delta
+            finish_reason = choice.finish_reason
+
+            content = delta.content or ""
+            reasoning_content = getattr(delta, "reasoning_content", "") or ""
+
+            if finish_reason:
+                self._logger.debug(
+                    "Stream finished",
+                    extra={"finish_reason": finish_reason},
+                )
+
+            # Build the message chunk
+            if reasoning_content:
+                msg_chunk = ReasoningAwareAIMessageChunk(
+                    content=content,
+                    reasoning_content=reasoning_content,
+                )
+            else:
+                msg_chunk = AIMessageChunk(content=content)
+
+            # Handle streaming tool call deltas
+            if hasattr(delta, "tool_calls") and delta.tool_calls:
+                msg_chunk.tool_call_chunks = [
+                    {
+                        "name": (
+                            tc.function.name
+                            if tc.function and tc.function.name
+                            else None
+                        ),
+                        "args": (
+                            tc.function.arguments
+                            if tc.function and tc.function.arguments
+                            else ""
+                        ),
+                        "id": tc.id,
+                        "index": tc.index,
+                    }
+                    for tc in delta.tool_calls
+                ]
+
+            gen_chunk = ChatGenerationChunk(
+                message=msg_chunk,
+                generation_info=(
+                    {"finish_reason": finish_reason} if finish_reason else {}
+                ),
+            )
+
+            if run_manager:
+                run_manager.on_llm_new_token(content, chunk=gen_chunk)
+
+            yield gen_chunk
+
+    # ------------------------------------------------------------------
+    # Tool binding & metadata
+    # ------------------------------------------------------------------
 
     def bind_tools(self, tools: list, **kwargs):
-        """Bind tools to the chat model with support for additional parameters like tool_choice.
+        """Bind tools to the model for tool-calling.
 
-        Accepts LangChain BaseTool instances or OpenAI-format tool dicts.
+        Accepts LangChain BaseTool instances, Pydantic models, or
+        OpenAI-format tool dicts.  Returns a RunnableBinding so
+        ``model.bind_tools(tools).invoke(messages)`` works.
         """
-        if not self.chat_model:
-            raise RuntimeError("ChatOpenAI not initialized")
-        return self.chat_model.bind_tools(tools, **kwargs)
+        from langchain_core.utils.function_calling import convert_to_openai_tool
+
+        formatted: list = []
+        for t in tools:
+            if isinstance(t, dict):
+                formatted.append(t)
+            else:
+                formatted.append(convert_to_openai_tool(t))
+
+        self._bound_tools = formatted
+
+        if "tool_choice" in kwargs:
+            self._tool_choice = kwargs.pop("tool_choice")
+
+        return self.bind(tools=formatted, **kwargs)
+
+    def bind_metadata(self, metadata: dict):
+        """Bind additional metadata to the pipeline."""
+        if not self.metadata:
+            self.metadata = {}
+        self.metadata.update(metadata)
+        return self
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def shutdown(self):
+        """Shutdown the llama.cpp server."""
+        if self.started and hasattr(self, "server_manager"):
+            self._logger.info(f"Shutting down server for {self.model.name}")
+            self.server_manager.stop()
+            self.started = False
+
+    def __del__(self):
+        """Cleanup when pipeline is destroyed."""
+        self.shutdown()
+
+    @property
+    def _llm_type(self) -> str:
+        return "llamacpp_openai_sdk"
+
+    @property
+    def _identifying_params(self) -> Dict[str, Any]:
+        assert self.server_manager is not None
+        return {
+            "model_name": self.model.name,
+            "server_port": self.server_manager.port,
+            "pipeline_type": "openai_sdk",
+        }
