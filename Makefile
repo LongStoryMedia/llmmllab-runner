@@ -1,7 +1,7 @@
 # Runner Makefile
 # Manages build, test, and deployment of the runner service
 
-.PHONY: all build test lint start deploy proto clean help
+.PHONY: all build test lint start start-local start-local-debug deploy proto clean help
 
 all: build test
 
@@ -71,12 +71,28 @@ start-debug: env
 	@. .venv/bin/activate && python -m server.grpc --log-level debug
 
 # =============================================================================
+# Local Development
+# =============================================================================
+
+start-local:
+	@echo "Starting runner locally with .env.local..."
+	@set -a && . ./.env.local && set +a && \
+		. .venv/bin/activate && \
+		PYTHONPATH="gen/python:." python -m server.grpc
+
+start-local-debug:
+	@echo "Starting runner locally with debug logging..."
+	@set -a && . ./.env.local && set +a && \
+		. .venv/bin/activate && \
+		python -m server.grpc --log-level debug
+
+# =============================================================================
 # Proto Generation
 # =============================================================================
 
 proto:
 	@echo "Generating runner proto code..."
-	@cd ../proto && make generate-runner
+	@cd llmmllab-proto && make generate-runner
 	@echo "Runner proto code generated"
 
 # =============================================================================
@@ -134,3 +150,7 @@ help:
 	@echo "  deploy          - Deploy to k8s"
 	@echo "  clean           - Clean artifacts"
 	@echo "  help            - Show this help message"
+	@echo ""
+	@echo "Local Development:"
+	@echo "  start-local     - Start runner locally with .env.local"
+	@echo "  start-local-debug - Start runner locally with debug logging"
