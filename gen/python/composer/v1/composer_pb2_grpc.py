@@ -36,25 +36,10 @@ class ComposerServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.ComposeWorkflow = channel.unary_unary(
-                '/composer.v1.ComposerService/ComposeWorkflow',
-                request_serializer=composer_dot_v1_dot_composer__pb2.ComposeWorkflowRequest.SerializeToString,
-                response_deserializer=composer_dot_v1_dot_composer__pb2.WorkflowHandle.FromString,
-                _registered_method=True)
         self.ExecuteWorkflow = channel.unary_stream(
                 '/composer.v1.ComposerService/ExecuteWorkflow',
                 request_serializer=composer_dot_v1_dot_composer__pb2.ExecuteWorkflowRequest.SerializeToString,
                 response_deserializer=composer_dot_v1_dot_composer__pb2.ChatResponse.FromString,
-                _registered_method=True)
-        self.CreateInitialState = channel.unary_unary(
-                '/composer.v1.ComposerService/CreateInitialState',
-                request_serializer=composer_dot_v1_dot_composer__pb2.CreateInitialStateRequest.SerializeToString,
-                response_deserializer=composer_dot_v1_dot_composer__pb2.WorkflowState.FromString,
-                _registered_method=True)
-        self.ClearWorkflowCache = channel.unary_unary(
-                '/composer.v1.ComposerService/ClearWorkflowCache',
-                request_serializer=composer_dot_v1_dot_composer__pb2.ClearWorkflowCacheRequest.SerializeToString,
-                response_deserializer=composer_dot_v1_dot_composer__pb2.ClearWorkflowCacheResponse.FromString,
                 _registered_method=True)
         self.GetWorkflowStatus = channel.unary_unary(
                 '/composer.v1.ComposerService/GetWorkflowStatus',
@@ -72,29 +57,9 @@ class ComposerServiceServicer(object):
     """ComposerService provides workflow composition and execution
     """
 
-    def ComposeWorkflow(self, request, context):
-        """ComposeWorkflow creates a new workflow from requirements
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def ExecuteWorkflow(self, request, context):
-        """ExecuteWorkflow executes a workflow with streaming responses
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def CreateInitialState(self, request, context):
-        """CreateInitialState creates initial state for a workflow
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def ClearWorkflowCache(self, request, context):
-        """ClearWorkflowCache clears cached workflows for a user
+        """ExecuteWorkflow composes and executes a workflow with streaming responses
+        This RPC combines workflow composition and execution into a single call
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -117,25 +82,10 @@ class ComposerServiceServicer(object):
 
 def add_ComposerServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'ComposeWorkflow': grpc.unary_unary_rpc_method_handler(
-                    servicer.ComposeWorkflow,
-                    request_deserializer=composer_dot_v1_dot_composer__pb2.ComposeWorkflowRequest.FromString,
-                    response_serializer=composer_dot_v1_dot_composer__pb2.WorkflowHandle.SerializeToString,
-            ),
             'ExecuteWorkflow': grpc.unary_stream_rpc_method_handler(
                     servicer.ExecuteWorkflow,
                     request_deserializer=composer_dot_v1_dot_composer__pb2.ExecuteWorkflowRequest.FromString,
                     response_serializer=composer_dot_v1_dot_composer__pb2.ChatResponse.SerializeToString,
-            ),
-            'CreateInitialState': grpc.unary_unary_rpc_method_handler(
-                    servicer.CreateInitialState,
-                    request_deserializer=composer_dot_v1_dot_composer__pb2.CreateInitialStateRequest.FromString,
-                    response_serializer=composer_dot_v1_dot_composer__pb2.WorkflowState.SerializeToString,
-            ),
-            'ClearWorkflowCache': grpc.unary_unary_rpc_method_handler(
-                    servicer.ClearWorkflowCache,
-                    request_deserializer=composer_dot_v1_dot_composer__pb2.ClearWorkflowCacheRequest.FromString,
-                    response_serializer=composer_dot_v1_dot_composer__pb2.ClearWorkflowCacheResponse.SerializeToString,
             ),
             'GetWorkflowStatus': grpc.unary_unary_rpc_method_handler(
                     servicer.GetWorkflowStatus,
@@ -160,33 +110,6 @@ class ComposerService(object):
     """
 
     @staticmethod
-    def ComposeWorkflow(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/composer.v1.ComposerService/ComposeWorkflow',
-            composer_dot_v1_dot_composer__pb2.ComposeWorkflowRequest.SerializeToString,
-            composer_dot_v1_dot_composer__pb2.WorkflowHandle.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
     def ExecuteWorkflow(request,
             target,
             options=(),
@@ -203,60 +126,6 @@ class ComposerService(object):
             '/composer.v1.ComposerService/ExecuteWorkflow',
             composer_dot_v1_dot_composer__pb2.ExecuteWorkflowRequest.SerializeToString,
             composer_dot_v1_dot_composer__pb2.ChatResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def CreateInitialState(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/composer.v1.ComposerService/CreateInitialState',
-            composer_dot_v1_dot_composer__pb2.CreateInitialStateRequest.SerializeToString,
-            composer_dot_v1_dot_composer__pb2.WorkflowState.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def ClearWorkflowCache(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/composer.v1.ComposerService/ClearWorkflowCache',
-            composer_dot_v1_dot_composer__pb2.ClearWorkflowCacheRequest.SerializeToString,
-            composer_dot_v1_dot_composer__pb2.ClearWorkflowCacheResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -29,18 +29,18 @@ if [ "$PLATFORM" = "lsnode-3" ]; then
       cp -r /data/code-base/* \${TEMP_DIR}/
 
       echo \"Building runner image...\"
-      cd \${TEMP_DIR}/runner && docker build -t \${REGISTRY}/runner:\${TAG} -f k8s/Dockerfile . --push
+      cd \${TEMP_DIR}/llmmllab-runner && docker build -t \${REGISTRY}/llmmllab-runner:\${TAG} -f k8s/Dockerfile . --push
 
-      echo \"runner image built and pushed: \${REGISTRY}/runner:\${TAG}\"
+      echo \"runner image built and pushed: \${REGISTRY}/llmmllab-runner:\${TAG}\"
     "
 else
     # Multi-arch build
     echo "Building runner multi-arch image (linux/amd64, linux/arm64)..."
     docker buildx build \
-        --platform linux/amd64,linux/arm64 \
-        -t ${REGISTRY}/runner:${TAG} \
-        --push \
-        -f k8s/Dockerfile .
+    --platform linux/amd64,linux/arm64 \
+    -t ${REGISTRY}/llmmllab-runner:${TAG} \
+    --push \
+    -f k8s/Dockerfile .
 fi
 
-echo "runner build complete: ${REGISTRY}/runner:${TAG}"
+echo "runner build complete: ${REGISTRY}/llmmllab-runner:${TAG}"

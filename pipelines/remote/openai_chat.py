@@ -1,7 +1,6 @@
 """Minimal BaseChatModel wrapper around the OpenAI SDK for remote OpenAI models."""
 
 import json
-import os
 from typing import Any, Dict, Iterator, List, Optional
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
@@ -9,6 +8,8 @@ from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 
 from pipelines.llamacpp.chat import ChatLlamaCppPipeline
+
+from config import env_config
 
 
 class OpenAIChatModel(ChatLlamaCppPipeline.__bases__[0]):  # type: ignore[misc]
@@ -21,7 +22,7 @@ class OpenAIChatModel(ChatLlamaCppPipeline.__bases__[0]):  # type: ignore[misc]
 
         super().__init__(name=model_name, **kwargs)
         self._model_name = model_name
-        self._client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+        self._client = OpenAI(api_key=env_config.OPENAI_API_KEY)
 
     @property
     def _llm_type(self) -> str:

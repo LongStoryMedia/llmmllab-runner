@@ -13,6 +13,8 @@ from typing import Any, Dict
 from models.config_utils import resolve_gpu_config
 from utils.logging import llmmllogger
 
+from config import env_config
+
 from .base_argument_builder import BaseArgumentBuilder
 from .dynamic_flag_parser import DynamicFlagParser
 
@@ -24,9 +26,7 @@ class LlamaCppArgumentBuilder(BaseArgumentBuilder):
 
     def _get_executable_path(self) -> str:
         """Return the path to llama.cpp server executable."""
-        return os.getenv(
-            "RUNNER_LLAMA_SERVER_EXECUTABLE", "/llama.cpp/build/bin/llama-server"
-        )
+        return env_config.RUNNER_LLAMA_SERVER_EXECUTABLE
 
     def _setup_parser(self) -> None:
         """Setup llama.cpp specific argument parser with dynamically discovered flags."""
@@ -93,7 +93,7 @@ class LlamaCppArgumentBuilder(BaseArgumentBuilder):
         )
 
         # Add debug logging if enabled
-        if os.getenv("LOG_LEVEL", "WARNING").lower() == "debug":
+        if env_config.LOG_LEVEL.lower() == "debug":
             config["verbose"] = True
 
     def _build_inference_config(self, config: Dict[str, Any]) -> None:
@@ -212,12 +212,20 @@ class LlamaCppArgumentBuilder(BaseArgumentBuilder):
         )
         #
         # Add logging configuration
-        if os.getenv("LOG_LEVEL", "WARNING").lower() == "trace":
+        if env_config.LOG_LEVEL.lower() == "trace":
             config["verbose"] = True
 
     def _get_gguf_path(self) -> str:
-        """Return resolved GGUF file path for model."""
+        """Return resolved GGUF file path for model.
+
+        The path is taken from the model config and returned as-is.
+        Paths in the models config file should be absolute or relative to the working directory.
+        """
         details = getattr(self.model, "details", None)
-        if details and hasattr(details, "gguf_file") and details.gguf_file:
-            return details.gguf_file
+        gguf_file = details.gguf_file if details and hasattr(details, "gguf_file") else None
+
+        if gguf_file:
+            return gguf_file
+
+        # Fallback to model.model field
         return self.model.model

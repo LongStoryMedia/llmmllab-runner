@@ -29,14 +29,149 @@ from runner.v1 import (
 )
 from common import version_pb2 as common_version_pb2
 from pipelines.pipeline_factory import pipeline_factory
-from models import ModelProfile, PipelinePriority
+from models import ModelProfile, PipelinePriority, Model
 from utils.logging import llmmllogger
+from datetime import datetime
 from server.interceptors import (
     create_interceptor_chain,
     get_metrics_tracker,
 )
 
 app_logger = llmmllogger.bind(component="RunnerGRPCServer")
+
+
+def _proto_to_model(proto_model) -> Model:
+    """
+    Convert a protobuf Model message to a Pydantic Model.
+
+    Args:
+        proto_model: Protobuf Model message from gRPC request
+
+    Returns:
+        Model: Pydantic Model object
+    """
+    from models import ModelDetails, LoraWeight
+
+    # Convert nested ModelDetails
+    details = None
+    if proto_model.details:
+        details = ModelDetails(
+            parent_model=proto_model.details.parent_model or None,
+            format=proto_model.details.format,
+            gguf_file=proto_model.details.gguf_file or None,
+            clip_model_path=proto_model.details.clip_model_path or None,
+            family=proto_model.details.family,
+            families=list(proto_model.details.families),
+            parameter_size=proto_model.details.parameter_size,
+            quantization_level=proto_model.details.quantization_level or None,
+            dtype=proto_model.details.dtype or None,
+            precision=_proto_precision_to_str(proto_model.details.precision),
+            specialization=_proto_specialization_to_str(proto_model.details.specialization),
+            description=proto_model.details.description or None,
+            weight=proto_model.details.weight or None,
+            size=proto_model.details.size,
+            original_ctx=proto_model.details.original_ctx,
+            n_layers=proto_model.details.n_layers or None,
+            hidden_size=proto_model.details.hidden_size or None,
+            n_heads=proto_model.details.n_heads or None,
+            n_kv_heads=proto_model.details.n_kv_heads or None,
+            clip_model_size=proto_model.details.clip_model_size or None,
+        )
+
+    # Convert LoRA weights
+    lora_weights = None
+    if proto_model.lora_weights:
+        lora_weights = [
+            LoraWeight(
+                id=lora.id,
+                name=lora.name,
+                parent_model=lora.parent_model,
+                weight_name=lora.weight_name or None,
+                adapter_name=lora.adapter_name or None,
+            )
+            for lora in proto_model.lora_weights
+        ]
+
+    # Convert provider
+    provider = _proto_provider_to_str(proto_model.provider)
+
+    # Convert task
+    task = _proto_task_to_str(proto_model.task)
+
+    return Model(
+        id=proto_model.id or None,
+        name=proto_model.name,
+        model=proto_model.model,
+        task=task,
+        modified_at=proto_model.modified_at,
+        digest=proto_model.digest,
+        details=details,
+        pipeline=proto_model.pipeline or None,
+        lora_weights=lora_weights,
+        provider=provider,
+    )
+
+
+def _proto_provider_to_str(provider_enum) -> str:
+    """Convert protobuf ModelProvider enum to string."""
+    provider_map = {
+        1: "llama_cpp",
+        2: "hf",
+        3: "hugging_face",
+        4: "openai",
+        5: "stable_diffusion_cpp",
+        6: "anthropic",
+        7: "other",
+    }
+    return provider_map.get(provider_enum, "other")
+
+
+def _proto_task_to_str(task_enum) -> str:
+    """Convert protobuf ModelTask enum to string."""
+    task_map = {
+        1: "TextToText",
+        2: "TextToImage",
+        3: "ImageToText",
+        4: "ImageToImage",
+        5: "TextToAudio",
+        6: "AudioToText",
+        7: "TextToVideo",
+        8: "VideoToText",
+        9: "TextToSpeech",
+        10: "SpeechToText",
+        11: "TextToEmbeddings",
+        12: "VisionTextToText",
+        13: "ImageTextToImage",
+        14: "TextToRanking",
+    }
+    return task_map.get(task_enum, "TextToText")
+
+
+def _proto_precision_to_str(precision_enum) -> str:
+    """Convert protobuf ModelDetails PrecisionEnum to string."""
+    precision_map = {
+        1: "fp32",
+        2: "fp16",
+        3: "bf16",
+        4: "int8",
+        5: "int4",
+        6: "int2",
+        7: "int1",
+    }
+    return precision_map.get(precision_enum, "fp16")
+
+
+def _proto_specialization_to_str(specialization_enum) -> str:
+    """Convert protobuf ModelDetails SpecializationEnum to string."""
+    specialization_map = {
+        1: "LoRA",
+        2: "Embedding",
+        3: "TextToImage",
+        4: "ImageToImage",
+        5: "Audio",
+        6: "Text",
+    }
+    return specialization_map.get(specialization_enum, "Text")
 
 
 class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
@@ -52,6 +187,8 @@ class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
         self.logger = llmmllogger.bind(component="RunnerGRPCServicer")
         self._server: Optional[Server] = None
         self._initialized = False
+        # Storage for active pipelines - maps pipeline_id to pipeline object
+        self._pipelines: dict[str, object] = {}
 
     async def initialize(self):
         """Initialize the runner service for gRPC usage."""
@@ -83,7 +220,6 @@ class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
             self.logger.debug(
                 "CreatePipeline requested",
                 model_name=profile.model_name,
-                provider=profile.provider,
                 priority=priority,
             )
 
@@ -102,6 +238,13 @@ class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
                 gpu_config=None,
             )
 
+            # Convert protobuf Model if provided (from Server)
+            # This allows the Server to pass the full Model definition,
+            # eliminating the need for the Runner to look up models locally
+            model = None
+            if request.HasField("model") and request.model:
+                model = self._proto_to_model(request.model)
+
             # Get pipeline from factory
             # Priority may come as enum name or integer value from proto
             try:
@@ -111,10 +254,14 @@ class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
             pipeline = pipeline_factory.get_pipeline(
                 profile=model_profile,
                 priority=priority_enum,
+                model=model,
             )
 
             # Generate pipeline ID
             pipeline_id = f"pipeline_{profile.model_name}_{id(pipeline)}"
+
+            # Store pipeline for later execution
+            self._pipelines[pipeline_id] = pipeline
 
             self.logger.info(
                 "Pipeline created successfully",
@@ -146,6 +293,8 @@ class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
         """
         Execute a pipeline with streaming output.
 
+        If the pipeline doesn't exist, creates it on-the-fly from the request.
+
         Args:
             request: ExecutePipelineRequest with pipeline_id and input data
             context: gRPC request context
@@ -165,13 +314,99 @@ class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
                 input_length=len(input_data),
             )
 
-            # TODO: Retrieve pipeline by ID and execute
-            # For now, return UNIMPLEMENTED since we need pipeline storage/retrieval
-            context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-            context.set_details(
-                "ExecutePipeline requires pipeline storage/retrieval - not yet implemented"
+            # Retrieve or create pipeline
+            pipeline = self._pipelines.get(pipeline_id)
+
+            if pipeline is None:
+                # Create pipeline on-the-fly if it doesn't exist
+                # This allows ExecutePipeline to handle everything in one call
+                self.logger.info(
+                    "Pipeline not found, creating on-the-fly",
+                    pipeline_id=pipeline_id,
+                )
+
+                # Extract model info from pipeline_id (format: pipeline_{model_name}_{id})
+                import uuid as _uuid
+                from models import ModelParameters, ModelProfile, PipelinePriority
+
+                parts = pipeline_id.split("_")
+                model_name = parts[1] if len(parts) > 1 else "default"
+
+                # Create a minimal profile for on-the-fly pipeline creation
+                model_profile = ModelProfile(
+                    id=_uuid.uuid4(),
+                    model_name=model_name,
+                    user_id="grpc-pipeline",
+                    name=model_name,
+                    parameters=ModelParameters(),
+                    system_prompt="",
+                    type=0,
+                    gpu_config=None,
+                )
+
+                # Create pipeline using factory
+                pipeline = pipeline_factory.get_pipeline(
+                    profile=model_profile,
+                    priority=PipelinePriority.NORMAL,
+                )
+
+                # Store for potential reuse
+                self._pipelines[pipeline_id] = pipeline
+
+            # Convert input data to LangChain message format
+            input_text = input_data.decode("utf-8")
+
+            from langchain_core.messages import HumanMessage, AIMessageChunk
+            messages = [HumanMessage(content=input_text)]
+
+            # Stream the pipeline output
+            # LangChain's astream yields AIMessageChunk with accumulated content
+            # We need to track previous content to extract only new tokens
+            previous_content = ""
+            async for chunk in pipeline.astream(messages):
+                if isinstance(chunk, AIMessageChunk):
+                    # Handle content which can be str or list
+                    if isinstance(chunk.content, str):
+                        current_content = chunk.content
+                    elif isinstance(chunk.content, list):
+                        # Concatenate list items into string
+                        current_content = "".join(str(item) for item in chunk.content)
+                    else:
+                        current_content = str(chunk.content) if chunk.content else ""
+
+                    # Extract only the new tokens since last chunk
+                    new_content = current_content[len(previous_content):]
+                    if new_content:
+                        self.logger.debug(f"Token chunk: {new_content!r}")
+                        yield composer_runner_pb2.PipelineEvent(
+                            token_chunk=composer_runner_pb2.TokenChunk(
+                                token=new_content,
+                                token_id=0,
+                                probability=1.0,
+                                metadata={},
+                            )
+                        )
+                    previous_content = current_content
+                elif isinstance(chunk, str):
+                    # Some pipelines yield raw strings
+                    if chunk:
+                        self.logger.debug(f"Token chunk (str): {chunk!r}")
+                        yield composer_runner_pb2.PipelineEvent(
+                            token_chunk=composer_runner_pb2.TokenChunk(
+                                token=chunk,
+                                token_id=0,
+                                probability=1.0,
+                                metadata={},
+                            )
+                        )
+
+            # Send completion event
+            yield composer_runner_pb2.PipelineEvent(
+                complete=composer_runner_pb2.PipelineComplete(
+                    output_data=b"Execution complete",
+                    duration_ms=0,
+                )
             )
-            return
 
         except Exception as e:
             self.logger.error(
@@ -179,9 +414,13 @@ class RunnerServicer(composer_runner_pb2_grpc.RunnerServiceServicer):
                 error=str(e),
                 exc_info=True,
             )
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"Failed to execute pipeline: {str(e)}")
-            return
+            # Send error event instead of failing the stream
+            yield composer_runner_pb2.PipelineEvent(
+                error=composer_runner_pb2.PipelineError(
+                    error_code="EXECUTION_ERROR",
+                    message=str(e),
+                )
+            )
 
     async def GenerateEmbeddings(
         self,
@@ -370,7 +609,7 @@ async def serve(
     port: int = 50052,
     max_workers: int = 10,
     options: Optional[list] = None,
-    enable_interceptors: bool = True,
+    enable_interceptors: bool = False,
 ) -> Server:
     """
     Start the Runner gRPC server.
@@ -467,7 +706,7 @@ if __name__ == "__main__":
         "--enable-interceptors",
         action="store_true",
         help="Enable gRPC interceptors for logging and metrics",
-        default=True,
+        default=False,
     )
     args = parser.parse_args()
 

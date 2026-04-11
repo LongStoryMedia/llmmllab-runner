@@ -3,17 +3,17 @@ Structured logging for runner service.
 Follows inference service logging patterns.
 """
 
-import logging
-from datetime import datetime
-import os
-import sys
-from typing import Dict, Any, Optional
 import json
+import logging
+import sys
+from typing import Any
 from pydantic import BaseModel
 import structlog
 import structlog.typing
 import structlog.stdlib
 import structlog.processors
+
+from config import env_config
 
 
 def serialize_event_data(
@@ -92,7 +92,7 @@ class LlmmlLogger:
     """Structured logging with colorized output for both direct execution and Kubernetes logs."""
 
     def __init__(self, service_name: str = "llmmllab"):
-        log_level = os.environ.get("LOG_LEVEL", "info").lower()
+        log_level = env_config.LOG_LEVEL
         log_level_map = {
             "trace": logging.DEBUG,
             "debug": logging.DEBUG,
@@ -103,7 +103,7 @@ class LlmmlLogger:
         }
         logging_level = log_level_map.get(log_level, "info")
 
-        force_colors = os.environ.get("FORCE_COLOR", "0") == "1"
+        force_colors = env_config.FORCE_COLOR
         use_colors = force_colors or (
             hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
         )
@@ -132,7 +132,7 @@ class LlmmlLogger:
                 structlog.dev.ConsoleRenderer(
                     colors=False,
                     exception_formatter=structlog.dev.RichTracebackFormatter(
-                        color_system=None, show_locals=False
+                        color_system="standard", show_locals=False
                     ),
                 )
             )

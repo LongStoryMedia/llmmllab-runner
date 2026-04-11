@@ -26,12 +26,12 @@ from google.api import annotations_pb2 as google_dot_api_dot_annotations__pb2
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 from common import timestamp_pb2 as common_dot_timestamp__pb2
 from common import version_pb2 as common_dot_version__pb2
-import message_pb2 as message__pb2
-import user_config_pb2 as user__config__pb2
-import dynamic_tool_pb2 as dynamic__tool__pb2
+from messages import message_pb2 as messages_dot_message__pb2
+from messages import user_config_pb2 as messages_dot_user__config__pb2
+from messages import dynamic_tool_pb2 as messages_dot_dynamic__tool__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1a\x63omposer/v1/composer.proto\x12\x0b\x63omposer.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16\x63ommon/timestamp.proto\x1a\x14\x63ommon/version.proto\x1a\rmessage.proto\x1a\x11user_config.proto\x1a\x12\x64ynamic_tool.proto\"U\n\x0eWorkflowHandle\x12\x13\n\x0bworkflow_id\x18\x01 \x01(\t\x12.\n\ncreated_at\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x95\x02\n\rWorkflowState\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x17\n\x0f\x63onversation_id\x18\x02 \x01(\x05\x12\x15\n\rworkflow_type\x18\x03 \x01(\t\x12<\n\tvariables\x18\x04 \x03(\x0b\x32).composer.v1.WorkflowState.VariablesEntry\x12.\n\ncreated_at\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12#\n\x08messages\x18\x06 \x03(\x0b\x32\x11.messages.Message\x1a\x30\n\x0eVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xd4\x01\n\x16\x43omposeWorkflowRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x15\n\rworkflow_type\x18\x02 \x01(\t\x12\x12\n\nmodel_name\x18\x03 \x01(\t\x12-\n\ttimestamp\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12)\n\x0buser_config\x18\x05 \x01(\x0b\x32\x14.messages.UserConfig\x12$\n\x05tools\x18\x06 \x01(\x0b\x32\x15.messages.DynamicTool\"\x9c\x01\n\x16\x45xecuteWorkflowRequest\x12\x13\n\x0bworkflow_id\x18\x01 \x01(\t\x12\x31\n\rinitial_state\x18\x02 \x01(\x0b\x32\x1a.composer.v1.WorkflowState\x12\x15\n\rstream_events\x18\x03 \x01(\x08\x12#\n\x08messages\x18\x04 \x03(\x0b\x32\x11.messages.Message\"\xab\x02\n\rWorkflowEvent\x12\x12\n\nevent_type\x18\x01 \x01(\t\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x34\n\nstep_start\x18\x03 \x01(\x0b\x32\x1e.composer.v1.WorkflowStepStartH\x00\x12:\n\rstep_complete\x18\x04 \x01(\x0b\x32!.composer.v1.WorkflowStepCompleteH\x00\x12+\n\x05\x65rror\x18\x05 \x01(\x0b\x32\x1a.composer.v1.WorkflowErrorH\x00\x12-\n\x06output\x18\x06 \x01(\x0b\x32\x1b.composer.v1.WorkflowOutputH\x00\x42\t\n\x07payload\"\x91\x01\n\x11WorkflowStepStart\x12\x11\n\tstep_name\x18\x01 \x01(\t\x12:\n\x06inputs\x18\x02 \x03(\x0b\x32*.composer.v1.WorkflowStepStart.InputsEntry\x1a-\n\x0bInputsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xaf\x01\n\x14WorkflowStepComplete\x12\x11\n\tstep_name\x18\x01 \x01(\t\x12?\n\x07outputs\x18\x02 \x03(\x0b\x32..composer.v1.WorkflowStepComplete.OutputsEntry\x12\x13\n\x0b\x64uration_ms\x18\x03 \x01(\x03\x1a.\n\x0cOutputsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x9e\x01\n\rWorkflowError\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x12\n\nerror_code\x18\x02 \x01(\t\x12\x38\n\x07\x64\x65tails\x18\x03 \x03(\x0b\x32\'.composer.v1.WorkflowError.DetailsEntry\x1a.\n\x0c\x44\x65tailsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x8c\x01\n\x0eWorkflowOutput\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12;\n\x08metadata\x18\x02 \x03(\x0b\x32).composer.v1.WorkflowOutput.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xa7\x01\n\tChatDelta\x12\x12\n\nmessage_id\x18\x01 \x01(\t\x12\x0c\n\x04role\x18\x02 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x03 \x01(\t\x12\x36\n\x08metadata\x18\x04 \x03(\x0b\x32$.composer.v1.ChatDelta.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xdc\x02\n\x11\x43hatResponseDelta\x12%\n\x05\x64\x65lta\x18\x01 \x01(\x0b\x32\x16.composer.v1.ChatDelta\x12.\n\ncreated_at\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07\x63ontext\x18\x03 \x03(\x02\x12\x15\n\rfinish_reason\x18\x04 \x01(\t\x12\x16\n\x0etotal_duration\x18\x05 \x01(\x01\x12\x15\n\rload_duration\x18\x06 \x01(\x01\x12\x19\n\x11prompt_eval_count\x18\x07 \x01(\x01\x12\x1c\n\x14prompt_eval_duration\x18\x08 \x01(\x01\x12\x12\n\neval_count\x18\t \x01(\x01\x12\x15\n\reval_duration\x18\n \x01(\x01\x12\x12\n\nprocessing\x18\x0b \x01(\t\x12\r\n\x05state\x18\x0c \x01(\t\x12\x12\n\nprev_state\x18\r \x01(\t\"\xce\x01\n\x14\x43hatResponseComplete\x12/\n\x08\x63omplete\x18\x01 \x01(\x0b\x32\x1d.composer.v1.WorkflowComplete\x12.\n\ncreated_at\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07\x63ontext\x18\x03 \x03(\x02\x12\x15\n\rfinish_reason\x18\x04 \x01(\t\x12\x16\n\x0etotal_duration\x18\x05 \x01(\x01\x12\x15\n\rload_duration\x18\x06 \x01(\x01\"\x82\x01\n\x0c\x43hatResponse\x12/\n\x05\x64\x65lta\x18\x01 \x01(\x0b\x32\x1e.composer.v1.ChatResponseDeltaH\x00\x12\x35\n\x08\x63omplete\x18\x02 \x01(\x0b\x32!.composer.v1.ChatResponseCompleteH\x00\x42\n\n\x08response\"<\n\x10WorkflowComplete\x12\x13\n\x0boutput_data\x18\x01 \x01(\x0c\x12\x13\n\x0b\x64uration_ms\x18\x02 \x01(\x03\"L\n\x08TodoItem\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05title\x18\x02 \x01(\t\x12\x11\n\tcompleted\x18\x03 \x01(\x08\x12\x12\n\ncreated_at\x18\x04 \x01(\x03\"\x81\x01\n\x19\x43reateInitialStateRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x17\n\x0f\x63onversation_id\x18\x02 \x01(\x05\x12\x15\n\rworkflow_type\x18\x03 \x01(\t\x12#\n\x08messages\x18\x04 \x03(\x0b\x32\x11.messages.Message\",\n\x19\x43learWorkflowCacheRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"U\n\x1a\x43learWorkflowCacheResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\x12\x15\n\rcleared_count\x18\x03 \x01(\x05\"/\n\x18GetWorkflowStatusRequest\x12\x13\n\x0bworkflow_id\x18\x01 \x01(\t\"\xcd\x01\n\x19GetWorkflowStatusResponse\x12\x13\n\x0bworkflow_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12)\n\x05state\x18\x03 \x01(\x0b\x32\x1a.composer.v1.WorkflowState\x12.\n\ncreated_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x30\n\x0c\x63ompleted_at\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x1a\n\x18ListWorkflowTypesRequest\"3\n\x19ListWorkflowTypesResponse\x12\x16\n\x0eworkflow_types\x18\x01 \x03(\t\"1\n\x18GetWorkflowSchemaRequest\x12\x15\n\rworkflow_type\x18\x01 \x01(\t\"Q\n\x0eWorkflowSchema\x12\x15\n\rworkflow_type\x18\x01 \x01(\t\x12\x13\n\x0bjson_schema\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t2\xae\x04\n\x0f\x43omposerService\x12S\n\x0f\x43omposeWorkflow\x12#.composer.v1.ComposeWorkflowRequest\x1a\x1b.composer.v1.WorkflowHandle\x12S\n\x0f\x45xecuteWorkflow\x12#.composer.v1.ExecuteWorkflowRequest\x1a\x19.composer.v1.ChatResponse0\x01\x12X\n\x12\x43reateInitialState\x12&.composer.v1.CreateInitialStateRequest\x1a\x1a.composer.v1.WorkflowState\x12\x65\n\x12\x43learWorkflowCache\x12&.composer.v1.ClearWorkflowCacheRequest\x1a\'.composer.v1.ClearWorkflowCacheResponse\x12\x62\n\x11GetWorkflowStatus\x12%.composer.v1.GetWorkflowStatusRequest\x1a&.composer.v1.GetWorkflowStatusResponse\x12L\n\x0bHealthCheck\x12\x1d.common.v1.HealthCheckRequest\x1a\x1e.common.v1.HealthCheckResponse2\xd5\x01\n\x16WorkflowBuilderService\x12\x62\n\x11ListWorkflowTypes\x12%.composer.v1.ListWorkflowTypesRequest\x1a&.composer.v1.ListWorkflowTypesResponse\x12W\n\x11GetWorkflowSchema\x12%.composer.v1.GetWorkflowSchemaRequest\x1a\x1b.composer.v1.WorkflowSchemaBL\n\x18\x63om.llmmllab.composer.v1Z0github.com/llmmllab/proto/composer/v1;composerv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1a\x63omposer/v1/composer.proto\x12\x0b\x63omposer.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16\x63ommon/timestamp.proto\x1a\x14\x63ommon/version.proto\x1a\x16messages/message.proto\x1a\x1amessages/user_config.proto\x1a\x1bmessages/dynamic_tool.proto\"\xca\x01\n\x16\x45xecuteWorkflowRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x15\n\rworkflow_type\x18\x02 \x01(\t\x12\x12\n\nmodel_name\x18\x03 \x01(\t\x12)\n\x0buser_config\x18\x04 \x01(\x0b\x32\x14.messages.UserConfig\x12$\n\x05tools\x18\x05 \x01(\x0b\x32\x15.messages.DynamicTool\x12#\n\x08messages\x18\x06 \x03(\x0b\x32\x11.messages.Message\"\xab\x02\n\rWorkflowEvent\x12\x12\n\nevent_type\x18\x01 \x01(\t\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x34\n\nstep_start\x18\x03 \x01(\x0b\x32\x1e.composer.v1.WorkflowStepStartH\x00\x12:\n\rstep_complete\x18\x04 \x01(\x0b\x32!.composer.v1.WorkflowStepCompleteH\x00\x12+\n\x05\x65rror\x18\x05 \x01(\x0b\x32\x1a.composer.v1.WorkflowErrorH\x00\x12-\n\x06output\x18\x06 \x01(\x0b\x32\x1b.composer.v1.WorkflowOutputH\x00\x42\t\n\x07payload\"\x91\x01\n\x11WorkflowStepStart\x12\x11\n\tstep_name\x18\x01 \x01(\t\x12:\n\x06inputs\x18\x02 \x03(\x0b\x32*.composer.v1.WorkflowStepStart.InputsEntry\x1a-\n\x0bInputsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xaf\x01\n\x14WorkflowStepComplete\x12\x11\n\tstep_name\x18\x01 \x01(\t\x12?\n\x07outputs\x18\x02 \x03(\x0b\x32..composer.v1.WorkflowStepComplete.OutputsEntry\x12\x13\n\x0b\x64uration_ms\x18\x03 \x01(\x03\x1a.\n\x0cOutputsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x9e\x01\n\rWorkflowError\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x12\n\nerror_code\x18\x02 \x01(\t\x12\x38\n\x07\x64\x65tails\x18\x03 \x03(\x0b\x32\'.composer.v1.WorkflowError.DetailsEntry\x1a.\n\x0c\x44\x65tailsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x8c\x01\n\x0eWorkflowOutput\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12;\n\x08metadata\x18\x02 \x03(\x0b\x32).composer.v1.WorkflowOutput.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xa7\x01\n\tChatDelta\x12\x12\n\nmessage_id\x18\x01 \x01(\t\x12\x0c\n\x04role\x18\x02 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x03 \x01(\t\x12\x36\n\x08metadata\x18\x04 \x03(\x0b\x32$.composer.v1.ChatDelta.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xdc\x02\n\x11\x43hatResponseDelta\x12%\n\x05\x64\x65lta\x18\x01 \x01(\x0b\x32\x16.composer.v1.ChatDelta\x12.\n\ncreated_at\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07\x63ontext\x18\x03 \x03(\x02\x12\x15\n\rfinish_reason\x18\x04 \x01(\t\x12\x16\n\x0etotal_duration\x18\x05 \x01(\x01\x12\x15\n\rload_duration\x18\x06 \x01(\x01\x12\x19\n\x11prompt_eval_count\x18\x07 \x01(\x01\x12\x1c\n\x14prompt_eval_duration\x18\x08 \x01(\x01\x12\x12\n\neval_count\x18\t \x01(\x01\x12\x15\n\reval_duration\x18\n \x01(\x01\x12\x12\n\nprocessing\x18\x0b \x01(\t\x12\r\n\x05state\x18\x0c \x01(\t\x12\x12\n\nprev_state\x18\r \x01(\t\"\xce\x01\n\x14\x43hatResponseComplete\x12/\n\x08\x63omplete\x18\x01 \x01(\x0b\x32\x1d.composer.v1.WorkflowComplete\x12.\n\ncreated_at\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07\x63ontext\x18\x03 \x03(\x02\x12\x15\n\rfinish_reason\x18\x04 \x01(\t\x12\x16\n\x0etotal_duration\x18\x05 \x01(\x01\x12\x15\n\rload_duration\x18\x06 \x01(\x01\"\x82\x01\n\x0c\x43hatResponse\x12/\n\x05\x64\x65lta\x18\x01 \x01(\x0b\x32\x1e.composer.v1.ChatResponseDeltaH\x00\x12\x35\n\x08\x63omplete\x18\x02 \x01(\x0b\x32!.composer.v1.ChatResponseCompleteH\x00\x42\n\n\x08response\"<\n\x10WorkflowComplete\x12\x13\n\x0boutput_data\x18\x01 \x01(\x0c\x12\x13\n\x0b\x64uration_ms\x18\x02 \x01(\x03\"L\n\x08TodoItem\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05title\x18\x02 \x01(\t\x12\x11\n\tcompleted\x18\x03 \x01(\x08\x12\x12\n\ncreated_at\x18\x04 \x01(\x03\"B\n\x18GetWorkflowStatusRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x15\n\rworkflow_type\x18\x02 \x01(\t\"\xb5\x01\n\x19GetWorkflowStatusResponse\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x15\n\rworkflow_type\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\t\x12.\n\ncreated_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x30\n\x0c\x63ompleted_at\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x1a\n\x18ListWorkflowTypesRequest\"3\n\x19ListWorkflowTypesResponse\x12\x16\n\x0eworkflow_types\x18\x01 \x03(\t\"1\n\x18GetWorkflowSchemaRequest\x12\x15\n\rworkflow_type\x18\x01 \x01(\t\"Q\n\x0eWorkflowSchema\x12\x15\n\rworkflow_type\x18\x01 \x01(\t\x12\x13\n\x0bjson_schema\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t2\x98\x02\n\x0f\x43omposerService\x12S\n\x0f\x45xecuteWorkflow\x12#.composer.v1.ExecuteWorkflowRequest\x1a\x19.composer.v1.ChatResponse0\x01\x12\x62\n\x11GetWorkflowStatus\x12%.composer.v1.GetWorkflowStatusRequest\x1a&.composer.v1.GetWorkflowStatusResponse\x12L\n\x0bHealthCheck\x12\x1d.common.v1.HealthCheckRequest\x1a\x1e.common.v1.HealthCheckResponse2\xd5\x01\n\x16WorkflowBuilderService\x12\x62\n\x11ListWorkflowTypes\x12%.composer.v1.ListWorkflowTypesRequest\x1a&.composer.v1.ListWorkflowTypesResponse\x12W\n\x11GetWorkflowSchema\x12%.composer.v1.GetWorkflowSchemaRequest\x1a\x1b.composer.v1.WorkflowSchemaBL\n\x18\x63om.llmmllab.composer.v1Z0github.com/llmmllab/proto/composer/v1;composerv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -39,8 +39,6 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'composer.v1.composer_pb2', 
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\030com.llmmllab.composer.v1Z0github.com/llmmllab/proto/composer/v1;composerv1'
-  _globals['_WORKFLOWSTATE_VARIABLESENTRY']._loaded_options = None
-  _globals['_WORKFLOWSTATE_VARIABLESENTRY']._serialized_options = b'8\001'
   _globals['_WORKFLOWSTEPSTART_INPUTSENTRY']._loaded_options = None
   _globals['_WORKFLOWSTEPSTART_INPUTSENTRY']._serialized_options = b'8\001'
   _globals['_WORKFLOWSTEPCOMPLETE_OUTPUTSENTRY']._loaded_options = None
@@ -51,68 +49,54 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_WORKFLOWOUTPUT_METADATAENTRY']._serialized_options = b'8\001'
   _globals['_CHATDELTA_METADATAENTRY']._loaded_options = None
   _globals['_CHATDELTA_METADATAENTRY']._serialized_options = b'8\001'
-  _globals['_WORKFLOWHANDLE']._serialized_start=206
-  _globals['_WORKFLOWHANDLE']._serialized_end=291
-  _globals['_WORKFLOWSTATE']._serialized_start=294
-  _globals['_WORKFLOWSTATE']._serialized_end=571
-  _globals['_WORKFLOWSTATE_VARIABLESENTRY']._serialized_start=523
-  _globals['_WORKFLOWSTATE_VARIABLESENTRY']._serialized_end=571
-  _globals['_COMPOSEWORKFLOWREQUEST']._serialized_start=574
-  _globals['_COMPOSEWORKFLOWREQUEST']._serialized_end=786
-  _globals['_EXECUTEWORKFLOWREQUEST']._serialized_start=789
-  _globals['_EXECUTEWORKFLOWREQUEST']._serialized_end=945
-  _globals['_WORKFLOWEVENT']._serialized_start=948
-  _globals['_WORKFLOWEVENT']._serialized_end=1247
-  _globals['_WORKFLOWSTEPSTART']._serialized_start=1250
-  _globals['_WORKFLOWSTEPSTART']._serialized_end=1395
-  _globals['_WORKFLOWSTEPSTART_INPUTSENTRY']._serialized_start=1350
-  _globals['_WORKFLOWSTEPSTART_INPUTSENTRY']._serialized_end=1395
-  _globals['_WORKFLOWSTEPCOMPLETE']._serialized_start=1398
-  _globals['_WORKFLOWSTEPCOMPLETE']._serialized_end=1573
-  _globals['_WORKFLOWSTEPCOMPLETE_OUTPUTSENTRY']._serialized_start=1527
-  _globals['_WORKFLOWSTEPCOMPLETE_OUTPUTSENTRY']._serialized_end=1573
-  _globals['_WORKFLOWERROR']._serialized_start=1576
-  _globals['_WORKFLOWERROR']._serialized_end=1734
-  _globals['_WORKFLOWERROR_DETAILSENTRY']._serialized_start=1688
-  _globals['_WORKFLOWERROR_DETAILSENTRY']._serialized_end=1734
-  _globals['_WORKFLOWOUTPUT']._serialized_start=1737
-  _globals['_WORKFLOWOUTPUT']._serialized_end=1877
-  _globals['_WORKFLOWOUTPUT_METADATAENTRY']._serialized_start=1830
-  _globals['_WORKFLOWOUTPUT_METADATAENTRY']._serialized_end=1877
-  _globals['_CHATDELTA']._serialized_start=1880
-  _globals['_CHATDELTA']._serialized_end=2047
-  _globals['_CHATDELTA_METADATAENTRY']._serialized_start=1830
-  _globals['_CHATDELTA_METADATAENTRY']._serialized_end=1877
-  _globals['_CHATRESPONSEDELTA']._serialized_start=2050
-  _globals['_CHATRESPONSEDELTA']._serialized_end=2398
-  _globals['_CHATRESPONSECOMPLETE']._serialized_start=2401
-  _globals['_CHATRESPONSECOMPLETE']._serialized_end=2607
-  _globals['_CHATRESPONSE']._serialized_start=2610
-  _globals['_CHATRESPONSE']._serialized_end=2740
-  _globals['_WORKFLOWCOMPLETE']._serialized_start=2742
-  _globals['_WORKFLOWCOMPLETE']._serialized_end=2802
-  _globals['_TODOITEM']._serialized_start=2804
-  _globals['_TODOITEM']._serialized_end=2880
-  _globals['_CREATEINITIALSTATEREQUEST']._serialized_start=2883
-  _globals['_CREATEINITIALSTATEREQUEST']._serialized_end=3012
-  _globals['_CLEARWORKFLOWCACHEREQUEST']._serialized_start=3014
-  _globals['_CLEARWORKFLOWCACHEREQUEST']._serialized_end=3058
-  _globals['_CLEARWORKFLOWCACHERESPONSE']._serialized_start=3060
-  _globals['_CLEARWORKFLOWCACHERESPONSE']._serialized_end=3145
-  _globals['_GETWORKFLOWSTATUSREQUEST']._serialized_start=3147
-  _globals['_GETWORKFLOWSTATUSREQUEST']._serialized_end=3194
-  _globals['_GETWORKFLOWSTATUSRESPONSE']._serialized_start=3197
-  _globals['_GETWORKFLOWSTATUSRESPONSE']._serialized_end=3402
-  _globals['_LISTWORKFLOWTYPESREQUEST']._serialized_start=3404
-  _globals['_LISTWORKFLOWTYPESREQUEST']._serialized_end=3430
-  _globals['_LISTWORKFLOWTYPESRESPONSE']._serialized_start=3432
-  _globals['_LISTWORKFLOWTYPESRESPONSE']._serialized_end=3483
-  _globals['_GETWORKFLOWSCHEMAREQUEST']._serialized_start=3485
-  _globals['_GETWORKFLOWSCHEMAREQUEST']._serialized_end=3534
-  _globals['_WORKFLOWSCHEMA']._serialized_start=3536
-  _globals['_WORKFLOWSCHEMA']._serialized_end=3617
-  _globals['_COMPOSERSERVICE']._serialized_start=3620
-  _globals['_COMPOSERSERVICE']._serialized_end=4178
-  _globals['_WORKFLOWBUILDERSERVICE']._serialized_start=4181
-  _globals['_WORKFLOWBUILDERSERVICE']._serialized_end=4394
+  _globals['_EXECUTEWORKFLOWREQUEST']._serialized_start=234
+  _globals['_EXECUTEWORKFLOWREQUEST']._serialized_end=436
+  _globals['_WORKFLOWEVENT']._serialized_start=439
+  _globals['_WORKFLOWEVENT']._serialized_end=738
+  _globals['_WORKFLOWSTEPSTART']._serialized_start=741
+  _globals['_WORKFLOWSTEPSTART']._serialized_end=886
+  _globals['_WORKFLOWSTEPSTART_INPUTSENTRY']._serialized_start=841
+  _globals['_WORKFLOWSTEPSTART_INPUTSENTRY']._serialized_end=886
+  _globals['_WORKFLOWSTEPCOMPLETE']._serialized_start=889
+  _globals['_WORKFLOWSTEPCOMPLETE']._serialized_end=1064
+  _globals['_WORKFLOWSTEPCOMPLETE_OUTPUTSENTRY']._serialized_start=1018
+  _globals['_WORKFLOWSTEPCOMPLETE_OUTPUTSENTRY']._serialized_end=1064
+  _globals['_WORKFLOWERROR']._serialized_start=1067
+  _globals['_WORKFLOWERROR']._serialized_end=1225
+  _globals['_WORKFLOWERROR_DETAILSENTRY']._serialized_start=1179
+  _globals['_WORKFLOWERROR_DETAILSENTRY']._serialized_end=1225
+  _globals['_WORKFLOWOUTPUT']._serialized_start=1228
+  _globals['_WORKFLOWOUTPUT']._serialized_end=1368
+  _globals['_WORKFLOWOUTPUT_METADATAENTRY']._serialized_start=1321
+  _globals['_WORKFLOWOUTPUT_METADATAENTRY']._serialized_end=1368
+  _globals['_CHATDELTA']._serialized_start=1371
+  _globals['_CHATDELTA']._serialized_end=1538
+  _globals['_CHATDELTA_METADATAENTRY']._serialized_start=1321
+  _globals['_CHATDELTA_METADATAENTRY']._serialized_end=1368
+  _globals['_CHATRESPONSEDELTA']._serialized_start=1541
+  _globals['_CHATRESPONSEDELTA']._serialized_end=1889
+  _globals['_CHATRESPONSECOMPLETE']._serialized_start=1892
+  _globals['_CHATRESPONSECOMPLETE']._serialized_end=2098
+  _globals['_CHATRESPONSE']._serialized_start=2101
+  _globals['_CHATRESPONSE']._serialized_end=2231
+  _globals['_WORKFLOWCOMPLETE']._serialized_start=2233
+  _globals['_WORKFLOWCOMPLETE']._serialized_end=2293
+  _globals['_TODOITEM']._serialized_start=2295
+  _globals['_TODOITEM']._serialized_end=2371
+  _globals['_GETWORKFLOWSTATUSREQUEST']._serialized_start=2373
+  _globals['_GETWORKFLOWSTATUSREQUEST']._serialized_end=2439
+  _globals['_GETWORKFLOWSTATUSRESPONSE']._serialized_start=2442
+  _globals['_GETWORKFLOWSTATUSRESPONSE']._serialized_end=2623
+  _globals['_LISTWORKFLOWTYPESREQUEST']._serialized_start=2625
+  _globals['_LISTWORKFLOWTYPESREQUEST']._serialized_end=2651
+  _globals['_LISTWORKFLOWTYPESRESPONSE']._serialized_start=2653
+  _globals['_LISTWORKFLOWTYPESRESPONSE']._serialized_end=2704
+  _globals['_GETWORKFLOWSCHEMAREQUEST']._serialized_start=2706
+  _globals['_GETWORKFLOWSCHEMAREQUEST']._serialized_end=2755
+  _globals['_WORKFLOWSCHEMA']._serialized_start=2757
+  _globals['_WORKFLOWSCHEMA']._serialized_end=2838
+  _globals['_COMPOSERSERVICE']._serialized_start=2841
+  _globals['_COMPOSERSERVICE']._serialized_end=3121
+  _globals['_WORKFLOWBUILDERSERVICE']._serialized_start=3124
+  _globals['_WORKFLOWBUILDERSERVICE']._serialized_end=3337
 # @@protoc_insertion_point(module_scope)

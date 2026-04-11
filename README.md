@@ -54,20 +54,68 @@ pip install -e gen/python
 
 ## Usage
 
-### Development
+### Local Development
+
+For local development, models are loaded from `./.models.local.yaml` (or `./.models.yaml` if `.models.local.yaml` doesn't exist).
 
 ```bash
-# Start gRPC server
+# Set up local environment (creates .env.local with RUNNER_LOCAL_MODE=1)
+# Source the local environment
+source .env.local
+
+# Start gRPC server locally
+make start-local
+
+# Start with debug logging
+make start-local-debug
+```
+
+### Production/Container
+
+In production (Docker/k8s), models are loaded from `/app/.models.yaml`.
+
+```bash
+# Start gRPC server (requires RUNNER_MODELS_FILE_PATH or /app/.models.yaml)
 make start
 
 # Start with debug logging
 make start-debug
+```
 
-# Run tests
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RUNNER_MODELS_CONFIG` | Full path to models config file | `./.models.local.yaml` (if exists) or `/app/.models.yaml` |
+| `LOG_LEVEL` | Logging level | `debug` (local) / `info` (prod) |
+
+**Model file paths in config:**
+Paths to actual model files (GGUF, clip models) in the `.models.yaml` config should be absolute paths.
+
+### Tests
+
+```bash
+# Run all tests
 make test
 
+# Run unit tests
+make test-unit
+
+# Run integration tests
+make test-integration
+
+# Run with coverage
+make test-cover
+```
+
+### Linting
+
+```bash
 # Run linting
 make lint
+
+# Auto-fix linting issues
+make lint-fix
 ```
 
 ### Build & Deploy

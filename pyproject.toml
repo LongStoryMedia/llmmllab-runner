@@ -34,7 +34,8 @@ dev = [
 # All scripts removed as part of dead code cleanup
 
 [tool.setuptools]
-packages = {find = {}}
+packages = ["server", "pipelines", "models", "utils", "server_manager"]
+py-modules = ["config", "pipeline_factory", "__init__"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}

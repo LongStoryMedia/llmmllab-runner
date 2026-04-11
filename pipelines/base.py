@@ -4,7 +4,6 @@ Base pipeline class for processing data in a structured manner.
 
 from abc import ABC, abstractmethod
 import logging
-import os
 from typing import Iterator, Optional, Type
 from pydantic import BaseModel
 
@@ -13,12 +12,12 @@ from langchain_core.messages import BaseMessage
 from langchain_core.outputs import ChatResult, ChatGenerationChunk
 from langchain_core.language_models import BaseChatModel
 
-
+from config import env_config
 from models import Model, ModelProfile
 
 
 # Enable HTTP logging for debugging
-if os.getenv("LOG_LEVEL", "").lower() == "trace":
+if env_config.LOG_LEVEL.lower() == "trace":
     logging.getLogger("openai").setLevel(logging.DEBUG)
     logging.getLogger("httpx").setLevel(logging.DEBUG)
     logging.getLogger("httpcore").setLevel(logging.DEBUG)
@@ -68,7 +67,7 @@ class BasePipeline(BaseChatModel, ABC):
         # Pass the required fields to the parent constructor for Pydantic validation
         super().__init__(
             name=model.name,
-            verbose=os.getenv("LOG_LEVEL", "warning").lower() == "trace",
+            verbose=env_config.LOG_LEVEL.lower() == "trace",
             output_version="v1",
             tags=[
                 model.task.value,

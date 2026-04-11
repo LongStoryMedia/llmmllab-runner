@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from models import LoraWeight, Model, ModelDetails
 
+from config import env_config
 from utils.logging import llmmllogger
 
 
@@ -39,26 +40,14 @@ class ModelLoader:
     def _load_available_models(self) -> None:
         """Load available models from YAML (preferred) or JSON (legacy) configuration.
 
-        Order of precedence:
-        1. RUNNER_MODELS_FILE_PATH env var (can point to YAML or JSON)
-        2. /app/.models.yaml
-        3. /app/.models.json (legacy fallback)
+        Uses RUNNER_MODELS_CONFIG env var for the full path to the models config file.
+        Defaults to ./.models.local.yaml if it exists, otherwise /app/.models.yaml.
         """
-        candidates: List[str] = []
-        env_path = os.environ.get("RUNNER_MODELS_FILE_PATH")
-        if env_path:
-            candidates.append(env_path)
-        candidates.extend(["/app/.models.yaml", "/app/.models.json"])
+        chosen_path: Optional[str] = env_config.RUNNER_MODELS_CONFIG
 
-        chosen_path: Optional[str] = None
-        for path in candidates:
-            if path and os.path.exists(path):
-                chosen_path = path
-                break
-
-        if not chosen_path:
+        if not chosen_path or not os.path.exists(chosen_path):
             self.logger.error(
-                "No models configuration file found (checked env, .models.yaml, .models.json)"
+                f"Models config file not found: {chosen_path}"
             )
             return
 

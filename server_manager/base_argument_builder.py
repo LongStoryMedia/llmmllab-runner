@@ -6,12 +6,13 @@ without actually parsing command line arguments.
 """
 
 import argparse
-import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
 from models import Model, ModelProfile, UserConfig
 from utils.logging import llmmllogger
+
+from config import env_config
 
 logger = llmmllogger.bind(component="BaseArgumentBuilder")
 
@@ -66,7 +67,7 @@ class BaseArgumentBuilder(ABC):
         )
 
         # Logging
-        if os.getenv("LOG_LEVEL", "WARNING").lower() == "trace":
+        if env_config.LOG_LEVEL.lower() == "trace":
             self._parser.add_argument("--verbose", action="store_true", default=True)
 
     def build_args(self) -> List[str]:

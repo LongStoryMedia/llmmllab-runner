@@ -1,6 +1,7 @@
 {
     "include": [
-        "gen/python"
+        "gen/python",
+        "."
     ],
     "exclude": [
         "**/node_modules",

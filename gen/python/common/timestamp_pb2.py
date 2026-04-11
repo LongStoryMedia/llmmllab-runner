@@ -24,14 +24,14 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16\x63ommon/timestamp.proto\x12\x06\x63ommon\"+\n\tTimestamp\x12\x0f\n\x07seconds\x18\x01 \x01(\x03\x12\r\n\x05nanos\x18\x02 \x01(\x05\x42k\n\x13\x63om.llmmllab.commonB\x0eTimestampProtoP\x01Z\'github.com/llmmllab/proto/common;common\xf8\x01\x01\xa2\x02\x03\x43MT\xaa\x02\x0fLLMMLLab.Commonb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16\x63ommon/timestamp.proto\x12\tcommon.v1\"+\n\tTimestamp\x12\x0f\n\x07seconds\x18\x01 \x01(\x03\x12\r\n\x05nanos\x18\x02 \x01(\x05\x42x\n\x16\x63om.llmmllab.common.v1B\x0eTimestampProtoP\x01Z,github.com/llmmllab/proto/common/v1;commonv1\xf8\x01\x01\xa2\x02\x06\x43OMMON\xaa\x02\x11LLMMLab.Common.V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'common.timestamp_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
-  _globals['DESCRIPTOR']._serialized_options = b'\n\023com.llmmllab.commonB\016TimestampProtoP\001Z\'github.com/llmmllab/proto/common;common\370\001\001\242\002\003CMT\252\002\017LLMMLLab.Common'
-  _globals['_TIMESTAMP']._serialized_start=34
-  _globals['_TIMESTAMP']._serialized_end=77
+  _globals['DESCRIPTOR']._serialized_options = b'\n\026com.llmmllab.common.v1B\016TimestampProtoP\001Z,github.com/llmmllab/proto/common/v1;commonv1\370\001\001\242\002\006COMMON\252\002\021LLMMLab.Common.V1'
+  _globals['_TIMESTAMP']._serialized_start=37
+  _globals['_TIMESTAMP']._serialized_end=80
 # @@protoc_insertion_point(module_scope)

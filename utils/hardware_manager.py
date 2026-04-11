@@ -11,6 +11,8 @@ from dataclasses import dataclass
 import nvsmi
 from models.dev_stats import DevStats
 
+from config import env_config
+
 
 def is_memory_related_error(error: Union[str, Exception]) -> bool:
     """Check if an error is memory-related."""
@@ -36,7 +38,7 @@ class MemoryConfig:
     context_reset_cooldown: int = 30
 
     # Thermal / power management
-    gpu_power_cap_pct: float = float(os.getenv("GPU_POWER_CAP_PCT", "85"))
+    gpu_power_cap_pct: float = env_config.GPU_POWER_CAP_PCT
     thermal_warning_c: float = 78.0  # Log warning above this
     thermal_critical_c: float = 88.0  # Considered critical — risk of PCIe drop
 

@@ -48,7 +48,6 @@ FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH="/app" \
-    RUNNER_DIR="/app/runner" \
     SHARED_VENV="/opt/venv/shared" \
     RUNNER_VENV="/opt/venv/shared" \
     LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/cuda/lib64" \
@@ -110,7 +109,7 @@ RUN . ${SHARED_VENV}/bin/activate && \
 
 # Install runner package in development mode
 RUN . ${SHARED_VENV}/bin/activate && \
-    pip install --no-cache-dir -e /app/runner && \
+    pip install --no-cache-dir -e /app && \
     deactivate
 
 # Make scripts executable

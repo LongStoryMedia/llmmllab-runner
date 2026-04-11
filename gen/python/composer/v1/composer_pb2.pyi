@@ -4,9 +4,9 @@ from google.api import annotations_pb2 as _annotations_pb2
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from common import timestamp_pb2 as _timestamp_pb2_1
 from common import version_pb2 as _version_pb2
-import message_pb2 as _message_pb2
-import user_config_pb2 as _user_config_pb2
-import dynamic_tool_pb2 as _dynamic_tool_pb2
+from messages import message_pb2 as _message_pb2
+from messages import user_config_pb2 as _user_config_pb2
+from messages import dynamic_tool_pb2 as _dynamic_tool_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -15,64 +15,21 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
-class WorkflowHandle(_message.Message):
-    __slots__ = ("workflow_id", "created_at")
-    WORKFLOW_ID_FIELD_NUMBER: _ClassVar[int]
-    CREATED_AT_FIELD_NUMBER: _ClassVar[int]
-    workflow_id: str
-    created_at: _timestamp_pb2.Timestamp
-    def __init__(self, workflow_id: _Optional[str] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
-
-class WorkflowState(_message.Message):
-    __slots__ = ("user_id", "conversation_id", "workflow_type", "variables", "created_at", "messages")
-    class VariablesEntry(_message.Message):
-        __slots__ = ("key", "value")
-        KEY_FIELD_NUMBER: _ClassVar[int]
-        VALUE_FIELD_NUMBER: _ClassVar[int]
-        key: str
-        value: str
-        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
-    USER_ID_FIELD_NUMBER: _ClassVar[int]
-    CONVERSATION_ID_FIELD_NUMBER: _ClassVar[int]
-    WORKFLOW_TYPE_FIELD_NUMBER: _ClassVar[int]
-    VARIABLES_FIELD_NUMBER: _ClassVar[int]
-    CREATED_AT_FIELD_NUMBER: _ClassVar[int]
-    MESSAGES_FIELD_NUMBER: _ClassVar[int]
-    user_id: str
-    conversation_id: int
-    workflow_type: str
-    variables: _containers.ScalarMap[str, str]
-    created_at: _timestamp_pb2.Timestamp
-    messages: _containers.RepeatedCompositeFieldContainer[_message_pb2.Message]
-    def __init__(self, user_id: _Optional[str] = ..., conversation_id: _Optional[int] = ..., workflow_type: _Optional[str] = ..., variables: _Optional[_Mapping[str, str]] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., messages: _Optional[_Iterable[_Union[_message_pb2.Message, _Mapping]]] = ...) -> None: ...
-
-class ComposeWorkflowRequest(_message.Message):
-    __slots__ = ("user_id", "workflow_type", "model_name", "timestamp", "user_config", "tools")
+class ExecuteWorkflowRequest(_message.Message):
+    __slots__ = ("user_id", "workflow_type", "model_name", "user_config", "tools", "messages")
     USER_ID_FIELD_NUMBER: _ClassVar[int]
     WORKFLOW_TYPE_FIELD_NUMBER: _ClassVar[int]
     MODEL_NAME_FIELD_NUMBER: _ClassVar[int]
-    TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
     USER_CONFIG_FIELD_NUMBER: _ClassVar[int]
     TOOLS_FIELD_NUMBER: _ClassVar[int]
+    MESSAGES_FIELD_NUMBER: _ClassVar[int]
     user_id: str
     workflow_type: str
     model_name: str
-    timestamp: _timestamp_pb2.Timestamp
     user_config: _user_config_pb2.UserConfig
     tools: _dynamic_tool_pb2.DynamicTool
-    def __init__(self, user_id: _Optional[str] = ..., workflow_type: _Optional[str] = ..., model_name: _Optional[str] = ..., timestamp: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., user_config: _Optional[_Union[_user_config_pb2.UserConfig, _Mapping]] = ..., tools: _Optional[_Union[_dynamic_tool_pb2.DynamicTool, _Mapping]] = ...) -> None: ...
-
-class ExecuteWorkflowRequest(_message.Message):
-    __slots__ = ("workflow_id", "initial_state", "stream_events", "messages")
-    WORKFLOW_ID_FIELD_NUMBER: _ClassVar[int]
-    INITIAL_STATE_FIELD_NUMBER: _ClassVar[int]
-    STREAM_EVENTS_FIELD_NUMBER: _ClassVar[int]
-    MESSAGES_FIELD_NUMBER: _ClassVar[int]
-    workflow_id: str
-    initial_state: WorkflowState
-    stream_events: bool
     messages: _containers.RepeatedCompositeFieldContainer[_message_pb2.Message]
-    def __init__(self, workflow_id: _Optional[str] = ..., initial_state: _Optional[_Union[WorkflowState, _Mapping]] = ..., stream_events: bool = ..., messages: _Optional[_Iterable[_Union[_message_pb2.Message, _Mapping]]] = ...) -> None: ...
+    def __init__(self, user_id: _Optional[str] = ..., workflow_type: _Optional[str] = ..., model_name: _Optional[str] = ..., user_config: _Optional[_Union[_user_config_pb2.UserConfig, _Mapping]] = ..., tools: _Optional[_Union[_dynamic_tool_pb2.DynamicTool, _Mapping]] = ..., messages: _Optional[_Iterable[_Union[_message_pb2.Message, _Mapping]]] = ...) -> None: ...
 
 class WorkflowEvent(_message.Message):
     __slots__ = ("event_type", "timestamp", "step_start", "step_complete", "error", "output")
@@ -247,53 +204,27 @@ class TodoItem(_message.Message):
     created_at: int
     def __init__(self, id: _Optional[str] = ..., title: _Optional[str] = ..., completed: bool = ..., created_at: _Optional[int] = ...) -> None: ...
 
-class CreateInitialStateRequest(_message.Message):
-    __slots__ = ("user_id", "conversation_id", "workflow_type", "messages")
-    USER_ID_FIELD_NUMBER: _ClassVar[int]
-    CONVERSATION_ID_FIELD_NUMBER: _ClassVar[int]
-    WORKFLOW_TYPE_FIELD_NUMBER: _ClassVar[int]
-    MESSAGES_FIELD_NUMBER: _ClassVar[int]
-    user_id: str
-    conversation_id: int
-    workflow_type: str
-    messages: _containers.RepeatedCompositeFieldContainer[_message_pb2.Message]
-    def __init__(self, user_id: _Optional[str] = ..., conversation_id: _Optional[int] = ..., workflow_type: _Optional[str] = ..., messages: _Optional[_Iterable[_Union[_message_pb2.Message, _Mapping]]] = ...) -> None: ...
-
-class ClearWorkflowCacheRequest(_message.Message):
-    __slots__ = ("user_id",)
-    USER_ID_FIELD_NUMBER: _ClassVar[int]
-    user_id: str
-    def __init__(self, user_id: _Optional[str] = ...) -> None: ...
-
-class ClearWorkflowCacheResponse(_message.Message):
-    __slots__ = ("success", "message", "cleared_count")
-    SUCCESS_FIELD_NUMBER: _ClassVar[int]
-    MESSAGE_FIELD_NUMBER: _ClassVar[int]
-    CLEARED_COUNT_FIELD_NUMBER: _ClassVar[int]
-    success: bool
-    message: str
-    cleared_count: int
-    def __init__(self, success: bool = ..., message: _Optional[str] = ..., cleared_count: _Optional[int] = ...) -> None: ...
-
 class GetWorkflowStatusRequest(_message.Message):
-    __slots__ = ("workflow_id",)
-    WORKFLOW_ID_FIELD_NUMBER: _ClassVar[int]
-    workflow_id: str
-    def __init__(self, workflow_id: _Optional[str] = ...) -> None: ...
+    __slots__ = ("user_id", "workflow_type")
+    USER_ID_FIELD_NUMBER: _ClassVar[int]
+    WORKFLOW_TYPE_FIELD_NUMBER: _ClassVar[int]
+    user_id: str
+    workflow_type: str
+    def __init__(self, user_id: _Optional[str] = ..., workflow_type: _Optional[str] = ...) -> None: ...
 
 class GetWorkflowStatusResponse(_message.Message):
-    __slots__ = ("workflow_id", "status", "state", "created_at", "completed_at")
-    WORKFLOW_ID_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ("user_id", "workflow_type", "status", "created_at", "completed_at")
+    USER_ID_FIELD_NUMBER: _ClassVar[int]
+    WORKFLOW_TYPE_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
-    STATE_FIELD_NUMBER: _ClassVar[int]
     CREATED_AT_FIELD_NUMBER: _ClassVar[int]
     COMPLETED_AT_FIELD_NUMBER: _ClassVar[int]
-    workflow_id: str
+    user_id: str
+    workflow_type: str
     status: str
-    state: WorkflowState
     created_at: _timestamp_pb2.Timestamp
     completed_at: _timestamp_pb2.Timestamp
-    def __init__(self, workflow_id: _Optional[str] = ..., status: _Optional[str] = ..., state: _Optional[_Union[WorkflowState, _Mapping]] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., completed_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    def __init__(self, user_id: _Optional[str] = ..., workflow_type: _Optional[str] = ..., status: _Optional[str] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., completed_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class ListWorkflowTypesRequest(_message.Message):
     __slots__ = ()

@@ -1,6 +1,5 @@
 """Minimal BaseChatModel wrapper around the Anthropic SDK for remote Anthropic models."""
 
-import os
 from typing import Any, Dict, Iterator, List, Optional
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
@@ -13,6 +12,8 @@ from langchain_core.messages import (
 )
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from langchain_core.language_models import BaseChatModel
+
+from config import env_config
 
 
 class AnthropicChatModel(BaseChatModel):
@@ -39,7 +40,7 @@ class AnthropicChatModel(BaseChatModel):
     def _get_client(self):
         import anthropic
 
-        return anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        return anthropic.Anthropic(api_key=env_config.ANTHROPIC_API_KEY)
 
     @staticmethod
     def _convert_messages(

@@ -71,14 +71,35 @@ class PipelineFactory:
         priority: PipelinePriority = PipelinePriority.NORMAL,
         grammar: Optional[Type[BaseModel]] = None,
         metadata: Optional[dict] = {},
+        model: Optional[Model] = None,
     ) -> Union[BasePipeline, Embeddings]:
+        """
+        Get or create a pipeline for the given model profile.
+
+        Args:
+            profile: ModelProfile defining the pipeline configuration
+            priority: Pipeline priority for resource allocation
+            grammar: Optional grammar type for output parsing
+            metadata: Optional metadata for the pipeline
+            model: Optional Model object. If provided, uses this model directly.
+                  If not provided, looks up model by profile.model_name from local config.
+
+        Returns:
+            Union[BasePipeline, Embeddings]: The created or retrieved pipeline
+        """
         model_id = profile.model_name
         self.logger.debug(
             f"Requesting pipeline for model_id: {model_id}, priority: {priority}, grammar: {grammar}, metadata: {metadata}"
         )
-        model = self._get_model_by_id(model_id)
-        if not model:
-            raise RuntimeError(f"Model with ID '{model_id}' not found.")
+
+        # Use provided model if given, otherwise look up from local config
+        if model is not None:
+            self.logger.debug(f"Using provided model: {model.id}")
+            model = model
+        else:
+            model = self._get_model_by_id(model_id)
+            if not model:
+                raise RuntimeError(f"Model with ID '{model_id}' not found.")
 
         # DEBUG: Add provider detection logging
         provider = getattr(model, "provider", None)
@@ -335,7 +356,7 @@ class PipelineFactory:
 
         match model.provider:
             case ModelProvider.LLAMA_CPP:
-                from .pipelines.llamacpp.chat import (
+                from .llamacpp.chat import (
                     ChatLlamaCppPipeline,
                 )  # pylint: disable=import-outside-toplevel
 
@@ -357,7 +378,7 @@ class PipelineFactory:
         profile: ModelProfile,
         metadata: Optional[dict] = {},
     ) -> Optional[Embeddings]:
-        from .pipelines.llamacpp.embed import (  # pylint: disable=import-outside-toplevel
+        from .llamacpp.embed import (  # pylint: disable=import-outside-toplevel
             EmbedLlamaCppPipeline,
         )
 
@@ -371,7 +392,7 @@ class PipelineFactory:
     ) -> Optional[BasePipeline]:
         if model.pipeline == "FluxPipeline":
             try:
-                from .pipelines.txt2img.flux import (  # pylint: disable=import-outside-toplevel
+                from .txt2img.flux import (  # pylint: disable=import-outside-toplevel
                     FluxPipe,
                 )
 
@@ -391,7 +412,7 @@ class PipelineFactory:
     ) -> Optional[BasePipeline]:
         if model.pipeline == "FluxKontextPipeline":
             try:
-                from .pipelines.img2img.flux import (  # pylint: disable=import-outside-toplevel
+                from .img2img.flux import (  # pylint: disable=import-outside-toplevel
                     FluxKontextPipe,
                 )
 

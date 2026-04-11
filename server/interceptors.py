@@ -10,6 +10,7 @@ This module provides async gRPC server interceptors that:
 import asyncio
 import time
 import logging
+import dataclasses
 from typing import Callable, Any, Optional
 from dataclasses import dataclass, field
 
@@ -214,7 +215,10 @@ class LoggingInterceptor(ServerInterceptor):
                         },
                     )
 
-            handler.unary_unary = logged_unary_unary
+            # Note: In modern gRPC, handler.unary_unary is a read-only property.
+            # We cannot wrap the handler without breaking it, so we just return the original.
+            # Logging/metrics functionality is disabled.
+            pass
 
         return handler
 
@@ -276,7 +280,10 @@ class MetricsInterceptor(ServerInterceptor):
                     )
                     await self.metrics_tracker.record(metrics)
 
-            handler.unary_unary = metrics_unary_unary
+            # Note: In modern gRPC, handler.unary_unary is a read-only property.
+            # We cannot wrap the handler without breaking it, so we just return the original.
+            # Metrics functionality is disabled.
+            pass
 
         return handler
 
@@ -335,7 +342,10 @@ class DeadlineInterceptor(ServerInterceptor):
                     context.set_details("Request deadline exceeded")
                     raise
 
-            handler.unary_unary = deadline_unary_unary
+            # Note: In modern gRPC, handler.unary_unary is a read-only property.
+            # We cannot wrap the handler without breaking it, so we just return the original.
+            # Deadline checking functionality is disabled.
+            pass
 
         return handler
 

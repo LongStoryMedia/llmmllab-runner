@@ -1,6 +1,7 @@
 from common import timestamp_pb2 as _timestamp_pb2
 from common import version_pb2 as _version_pb2
-import model_profile_pb2 as _model_profile_pb2
+from messages import model_profile_pb2 as _model_profile_pb2
+from messages import model_pb2 as _model_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -168,7 +169,7 @@ class CacheStats(_message.Message):
     def __init__(self, total_pipelines: _Optional[int] = ..., cached_pipelines: _Optional[int] = ..., active_pipelines: _Optional[int] = ..., total_memory_bytes: _Optional[int] = ..., available_memory_bytes: _Optional[int] = ..., cache_hits: _Optional[int] = ..., cache_misses: _Optional[int] = ..., hit_rate: _Optional[float] = ...) -> None: ...
 
 class CreatePipelineRequest(_message.Message):
-    __slots__ = ("profile", "priority", "grammar_type", "metadata")
+    __slots__ = ("profile", "priority", "grammar_type", "metadata", "model")
     class MetadataEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -180,11 +181,13 @@ class CreatePipelineRequest(_message.Message):
     PRIORITY_FIELD_NUMBER: _ClassVar[int]
     GRAMMAR_TYPE_FIELD_NUMBER: _ClassVar[int]
     METADATA_FIELD_NUMBER: _ClassVar[int]
+    MODEL_FIELD_NUMBER: _ClassVar[int]
     profile: _model_profile_pb2.ModelProfile
     priority: str
     grammar_type: str
     metadata: _containers.ScalarMap[str, str]
-    def __init__(self, profile: _Optional[_Union[_model_profile_pb2.ModelProfile, _Mapping]] = ..., priority: _Optional[str] = ..., grammar_type: _Optional[str] = ..., metadata: _Optional[_Mapping[str, str]] = ...) -> None: ...
+    model: _model_pb2.Model
+    def __init__(self, profile: _Optional[_Union[_model_profile_pb2.ModelProfile, _Mapping]] = ..., priority: _Optional[str] = ..., grammar_type: _Optional[str] = ..., metadata: _Optional[_Mapping[str, str]] = ..., model: _Optional[_Union[_model_pb2.Model, _Mapping]] = ...) -> None: ...
 
 class ExecutePipelineRequest(_message.Message):
     __slots__ = ("pipeline_id", "input_data", "stream_output")
