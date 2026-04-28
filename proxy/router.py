@@ -4,13 +4,51 @@ Catch-all route for /v1/server/{server_id}/* that rewrites the path
 and forwards to the appropriate local llama.cpp server instance.
 """
 
+import json
+
 import httpx
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse
-
-from config import RUNNER_PORT
+from fastapi.responses import Response, StreamingResponse
 
 router = APIRouter()
+
+
+async def _stream_upstream(client, method, url, headers, body, server_id):
+    """Stream response from upstream, keeping client open for the entire duration.
+
+    Returns a StreamingResponse that maintains the upstream connection
+    until the downstream client is done consuming.
+    """
+    from app import server_cache
+
+    response = await client.send(
+        client.build_request(
+            method=method,
+            url=url,
+            headers=headers,
+            content=body if body else None,
+        ),
+        stream=True,
+    )
+    response_headers = dict(response.headers)
+    status_code = response.status_code
+    clean_headers = {k: v for k, v in response_headers.items()
+                     if k.lower() not in ("transfer-encoding", "content-length")}
+
+    async def upstream_iterator():
+        try:
+            async for chunk in response.aiter_bytes():
+                yield chunk
+        finally:
+            response.close()
+            await client.aclose()
+            server_cache.decrement_use(server_id)
+
+    return StreamingResponse(
+        content=upstream_iterator(),
+        status_code=status_code,
+        headers=clean_headers,
+    )
 
 
 @router.api_route("/v1/server/{server_id}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
@@ -54,35 +92,47 @@ async def proxy_request(request: Request, server_id: str, path: str):
         headers["host"] = f"127.0.0.1:{entry.port}"
 
         method = request.method
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        client = httpx.AsyncClient(timeout=120.0)
+        streaming = False
+
+        # Check if this is likely an SSE request (POST to /v1/chat/completions)
+        is_likely_sse = (
+            method == "POST"
+            and "/chat/completions" in remaining
+            and body
+        )
+
+        if is_likely_sse:
+            try:
+                body_dict = json.loads(body)
+                is_likely_sse = body_dict.get("stream", False)
+            except Exception:
+                is_likely_sse = True  # be safe, stream if we can't parse
+
+        if is_likely_sse:
+            streaming = True
+            return await _stream_upstream(
+                client, method, upstream_url, headers, body, server_id,
+            )
+
+        # Non-streaming: buffer entire response
+        async with client:
             async with client.stream(
                 method=method,
                 url=upstream_url,
                 headers=headers,
                 content=body if body else None,
             ) as response:
-                response_headers = dict(response.headers)
-                is_sse = "text/event-stream" in response_headers.get("content-type", "")
+                content = b""
+                async for chunk in response.aiter_bytes():
+                    content += chunk
 
-                if is_sse:
-                    return StreamingResponse(
-                        content=response.aiter_bytes(),
-                        status_code=response.status_code,
-                        headers={k: v for k, v in response_headers.items()
-                                 if k.lower() not in ("transfer-encoding", "content-length")},
-                    )
-                else:
-                    content = b""
-                    async for chunk in response.aiter_bytes():
-                        content += chunk
-
-                    from fastapi.responses import Response
-                    return Response(
-                        content=content,
-                        status_code=response.status_code,
-                        headers={k: v for k, v in response_headers.items()
-                                 if k.lower() not in ("transfer-encoding", "content-length")},
-                    )
+                return Response(
+                    content=content,
+                    status_code=response.status_code,
+                    headers={k: v for k, v in dict(response.headers).items()
+                             if k.lower() not in ("transfer-encoding", "content-length")},
+                )
 
     except httpx.ConnectError:
         raise HTTPException(
@@ -95,5 +145,6 @@ async def proxy_request(request: Request, server_id: str, path: str):
             detail=f"Upstream server {server_id} timed out",
         )
     finally:
-        # Decrement use count after request completes
-        server_cache.decrement_use(server_id)
+        # Decrement for non-streaming paths; streaming path handles it internally
+        if not streaming:
+            server_cache.decrement_use(server_id)
