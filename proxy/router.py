@@ -14,6 +14,8 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 
+from config import PROXY_TIMEOUT
+
 router = APIRouter()
 
 
@@ -23,6 +25,10 @@ async def _stream_upstream(client, method, url, headers, body, server_id):
     Returns a StreamingResponse that maintains the upstream connection
     until the downstream client is done consuming. Decrements the server's
     use count when the stream fully completes or is abandoned.
+
+    When the downstream client disconnects mid-stream, ``aclose()`` is
+    called on the upstream response which closes the TCP connection to
+    llama.cpp, causing it to stop generating tokens for the abandoned slot.
     """
 
     response = await client.send(
@@ -44,7 +50,9 @@ async def _stream_upstream(client, method, url, headers, body, server_id):
             async for chunk in response.aiter_bytes():
                 yield chunk
         finally:
-            response.close()
+            # Close the upstream response (aborts connection if still open,
+            # which signals llama.cpp to stop generating for this slot)
+            await response.aclose()
             await client.aclose()
             # Request fully consumed (or client disconnected) — mark server idle
             from app import server_cache
@@ -99,7 +107,7 @@ async def proxy_request(request: Request, server_id: str, path: str):
         headers["host"] = f"127.0.0.1:{entry.port}"
 
         method = request.method
-        client = httpx.AsyncClient(timeout=120.0)
+        client = httpx.AsyncClient(timeout=PROXY_TIMEOUT)
 
         # Check if this is likely an SSE request (POST to /v1/chat/completions)
         is_likely_sse = (
