@@ -148,10 +148,12 @@ class LlamaCppArgumentBuilder:
                 if draft_gguf:
                     config["model_draft"] = str(draft_gguf)
 
-        # Reasoning (thinking) support - only when explicitly enabled
+        # Reasoning (thinking) support
         if params.think:
             config["reasoning"] = "on"
             config["reasoning_budget"] = 16384
+        else:
+            config["reasoning"] = "off"
 
         if LOG_LEVEL.lower() == "trace":
             config["verbose"] = True
