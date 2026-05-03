@@ -99,16 +99,23 @@ async def proxy_request(request: Request, server_id: str, path: str):
                     slots = slots_resp.json()
                     all_busy = all(s.get("is_processing", False) for s in slots)
                     if all_busy:
-                        # Estimate how long the longest-running request has left.
-                        # Use the eval timing from the busiest slot to guess.
-                        # Default to 30 s if we can't estimate.
+                        # Estimate remaining time from the busiest slot.
+                        # llama.cpp /slots returns:
+                        #   n_out_remaining — tokens left to generate
+                        #   t_token_ms      — average ms per token
+                        #   n_out_generated — tokens already generated
+                        # Fall back to 30 s if we can't estimate.
                         retry_after = 30
                         for s in slots:
-                            if s.get("is_processing"):
-                                # Rough estimate: tokens generated so far × avg
-                                # eval time per token.  We don't have a perfect
-                                # signal here, so we use a conservative default.
-                                retry_after = max(retry_after, 30)
+                            if not s.get("is_processing"):
+                                continue
+                            remaining_tokens = s.get("n_out_remaining")
+                            t_token_ms = s.get("t_token_ms")
+                            if remaining_tokens is not None and t_token_ms is not None:
+                                estimated_ms = remaining_tokens * t_token_ms
+                                # Add 20% safety margin, round up to seconds
+                                slot_retry = int(estimated_ms * 1.2 / 1000) + 1
+                                retry_after = max(retry_after, slot_retry)
                         logger.warning(
                             f"All slots busy, rejecting request (retry_after={retry_after}s)"
                         )
