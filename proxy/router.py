@@ -104,7 +104,7 @@ async def proxy_request(request: Request, server_id: str, path: str):
     remaining = path
     if "chat/completions" in remaining:
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(2.0)) as check_client:
+            async with httpx.AsyncClient(timeout=2.0) as check_client:
                 # Verify the server is actually responsive first
                 health_resp = await check_client.get(f"{target_host}/health")
                 if health_resp.status_code == 200:
