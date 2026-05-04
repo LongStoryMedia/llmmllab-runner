@@ -14,9 +14,24 @@ jobs:
       - name: Build & Deploy
         run: |
           set -euo pipefail
+          REGISTRY=192.168.0.71:31500
+          IMAGE=llmmllab-runner
           SHA=${{ github.sha }}
           SHORT_SHA=$(echo $SHA | cut -c1-7)
+
           echo "Building llmmllab-runner (SHA: $SHORT_SHA)..."
 
-          # Build and push using the Makefile deploy target
-          TAG=$SHA make deploy
+          # Build Docker image
+          docker build -t ${REGISTRY}/${IMAGE}:${SHA} .
+
+          # Push image
+          docker push ${REGISTRY}/${IMAGE}:${SHA}
+          docker tag ${REGISTRY}/${IMAGE}:${SHA} ${REGISTRY}/${IMAGE}:latest
+          docker push ${REGISTRY}/${IMAGE}:latest
+
+          # Deploy to Kubernetes
+          echo "Deploying to Kubernetes..."
+          chmod +x k8s/apply.sh
+          ./k8s/apply.sh --no-build
+
+          echo "Deployed llmmllab-runner:${SHA}"
