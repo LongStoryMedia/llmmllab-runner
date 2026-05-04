@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
 
+env:
+  SSH_STRICT_HOST_KEY_CHECKING: "no"
+
 jobs:
   deploy:
     name: Build & Deploy Runner
@@ -11,39 +14,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          script: |
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy via SSH
+        run: |
+          set -euo pipefail
+          
+          SSH_HOST="${{ secrets.SSH_HOST }}"
+          SSH_USER="${{ secrets.SSH_USER }}"
+          REGISTRY=192.168.0.71:31500
+          IMAGE=llmmllab-runner
+          SHA=${{ github.sha }}
+          SHORT_SHA=$(echo $SHA | cut -c1-7)
+          
+          echo "Building llmmllab-runner (SHA: $SHORT_SHA)..."
+          
+          # Sync repo to remote
+          ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "mkdir -p /tmp/llmmllab-runner-build && rm -rf /tmp/llmmllab-runner-build/*"
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" . $SSH_USER@$SSH_HOST:/tmp/llmmllab-runner-build/
+          
+          # Run build on remote
+          ssh -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST bash -s <<REMOTE
             set -euo pipefail
+            cd /tmp/llmmllab-runner-build
             
-            # Tag with commit SHA and latest
-            REGISTRY=192.168.0.71:31500
-            IMAGE=llmmllab-runner
-            SHA=${{ github.sha }}
-            SHORT_SHA=$(echo $SHA | cut -c1-7)
+            REGISTRY=$REGISTRY
+            IMAGE=$IMAGE
+            SHA=$SHA
+            SHORT_SHA=$SHORT_SHA
             
-            echo "Building llmmllab-runner (SHA: $SHORT_SHA)..."
+            echo "Building Docker image (CUDA)..."
+            docker build -t \${REGISTRY}/\${IMAGE}:\${SHA} .
+            docker tag \${REGISTRY}/\${IMAGE}:\${SHA} \${REGISTRY}/\${IMAGE}:latest
             
-            # Build Docker image (includes CUDA compilation of llama.cpp)
-            docker build -t ${REGISTRY}/${IMAGE}:${SHA} .
-            docker tag ${REGISTRY}/${IMAGE}:${SHA} ${REGISTRY}/${IMAGE}:latest
+            echo "Pushing images..."
+            docker push \${REGISTRY}/\${IMAGE}:\${SHA}
+            docker push \${REGISTRY}/\${IMAGE}:latest
             
-            # Push to registry
-            docker push ${REGISTRY}/${IMAGE}:${SHA}
-            docker push ${REGISTRY}/${IMAGE}:latest
-            
-            # Update both runner deployments with SHA tag
+            echo "Updating k8s deployments..."
             kubectl set image -n llmmllab deployment/llmmllab-runner \
-              llmmllab-runner=${REGISTRY}/${IMAGE}:${SHA} \
+              llmmllab-runner=\${REGISTRY}/\${IMAGE}:\${SHA} \
               --context=lsnet
             
             kubectl set image -n llmmllab deployment/llmmllab-runner-small \
-              llmmllab-runner=${REGISTRY}/${IMAGE}:${SHA} \
+              llmmllab-runner=\${REGISTRY}/\${IMAGE}:\${SHA} \
               --context=lsnet
             
-            echo "Deployed llmmllab-runner:${SHA} (main + small)"
+            echo "Deployed llmmllab-runner:\${SHA} (main + small)"
+          REMOTE
