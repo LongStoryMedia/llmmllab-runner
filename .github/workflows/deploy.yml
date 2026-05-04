@@ -21,21 +21,21 @@ jobs:
           
           echo "Building llmmllab-runner (SHA: $SHORT_SHA)..."
           
-          # Build Docker image
-          docker build -t ${REGISTRY}/${IMAGE}:${SHA} .
-          docker tag ${REGISTRY}/${IMAGE}:${SHA} ${REGISTRY}/${IMAGE}:latest
-          
-          echo "Pushing images..."
-          docker push ${REGISTRY}/${IMAGE}:${SHA}
+          # Build and push Docker image
+          docker build \
+            -t ${REGISTRY}/${IMAGE}:${SHA} \
+            -t ${REGISTRY}/${IMAGE}:latest \
+            --push . 2>/dev/null || \
+          docker build -t ${REGISTRY}/${IMAGE}:${SHA} . && \
+          docker tag ${REGISTRY}/${IMAGE}:${SHA} ${REGISTRY}/${IMAGE}:latest && \
+          docker push ${REGISTRY}/${IMAGE}:${SHA} && \
           docker push ${REGISTRY}/${IMAGE}:latest
           
           echo "Updating k8s deployments..."
           kubectl set image -n llmmllab deployment/llmmllab-runner \
-            llmmllab-runner=${REGISTRY}/${IMAGE}:${SHA} \
-            --context=lsnet
+            llmmllab-runner=${REGISTRY}/${IMAGE}:${SHA}
           
           kubectl set image -n llmmllab deployment/llmmllab-runner-small \
-            llmmllab-runner=${REGISTRY}/${IMAGE}:${SHA} \
-            --context=lsnet
+            llmmllab-runner=${REGISTRY}/${IMAGE}:${SHA}
           
           echo "Deployed llmmllab-runner:${SHA} (main + small)"
