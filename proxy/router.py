@@ -888,6 +888,7 @@ async def _stream_upstream(
         )
         from app import server_cache
 
+        # remove() is idempotent (uses dict.pop(..., None))
         server_cache.remove(server_id)
         raise
     except httpx.HTTPError as exc:
@@ -1406,6 +1407,7 @@ async def proxy_request(request: Request, server_id: str, path: str):
             exc,
             type(exc).__name__,
         )
+        # remove() is idempotent (uses dict.pop(..., None))
         server_cache.remove(server_id)
         raise HTTPException(
             status_code=502,
