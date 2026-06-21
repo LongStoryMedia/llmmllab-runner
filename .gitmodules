@@ -10,3 +10,6 @@
 [submodule "vendors/Hunyuan3D-Part"]
 	path = vendors/Hunyuan3D-Part
 	url = https://github.com/Tencent-Hunyuan/Hunyuan3D-Part.git
+[submodule "vendors/whisper.cpp"]
+	path = vendors/whisper.cpp
+	url = https://github.com/ggml-org/whisper.cpp.git
