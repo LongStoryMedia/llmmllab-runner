@@ -52,11 +52,11 @@ class WhisperCppServerManager(BaseServerManager):
         Health check: GET /
         Transcription: POST /inference
         """
-        # Health and metrics pass through directly
+        # whisper-server has no /health or /metrics endpoints - map to root
         if path in ("/health", "/metrics"):
-            return path
+            return f"{self.server_url}/"
         # All other paths map directly to whisper-server
-        return path
+        return f"{self.server_url}{path}"
 
     def _validate_context_size(self) -> bool:
         """Whisper has no concept of context window — always valid."""
