@@ -12,6 +12,9 @@ LLAMA_SERVER_EXECUTABLE = os.environ.get(
 SD_SERVER_EXECUTABLE = os.environ.get(
     "SD_SERVER_EXECUTABLE", "/stable-diffusion.cpp/build/bin/sd-server"
 )
+WHISPER_SERVER_EXECUTABLE = os.environ.get(
+    "WHISPER_SERVER_EXECUTABLE", "/whisper.cpp/build/bin/whisper-server"
+)
 # Image-output directory used by both the SD server manager (when run locally)
 # and the API layer for serving generated images.  The runner only uses this
 # for housekeeping/cleanup; the actual images are returned base64-encoded.

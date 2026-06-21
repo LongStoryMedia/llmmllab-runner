@@ -7,6 +7,8 @@ from .base import BaseServerManager
 from .llamacpp import LlamaCppServerManager
 from .sd_cpp import SDCppServerManager
 from .sd_cpp_argument_builder import SDCppArgumentBuilder
+from .whispercpp import WhisperCppServerManager
+from .whispercpp_argument_builder import WhisperCppArgumentBuilder
 
 __all__ = [
     "BaseServerManager",
@@ -14,4 +16,6 @@ __all__ = [
     "LlamaCppArgumentBuilder",
     "SDCppServerManager",
     "SDCppArgumentBuilder",
+    "WhisperCppServerManager",
+    "WhisperCppArgumentBuilder",
 ]

@@ -948,3 +948,36 @@
     parallel: 1
   pipeline: llama
   provider: llama_cpp
+
+# ---------------------------------------------------------------------------
+# Whisper.cpp small.en — audio transcription (AudioToText)
+#
+# Runs as a whisper-server subprocess, managed by WhisperCppServerManager.
+# Accepts audio via POST /v1/audio/transcriptions (api) → /inference (runner).
+# Model: small.en (466 MB, English-only, high accuracy for noisy audio).
+# GPU: CUDA-accelerated, pinned to main_gpu from parameters.
+# ---------------------------------------------------------------------------
+- id: whisper-small-en
+  name: "Whisper Small English"
+  model: "whisper-small-en"
+  task: AudioToText
+  default: true
+  size: 466000000
+  modified_at: "2026-06-20T00:00:00+00:00"
+  digest: "whisper-small-en-ggml-466m"
+  original_ctx: 4096
+  details:
+    format: ggml
+    gguf_file: "/models/whisper/small.en/ggml-model.bin"
+    family: whisper
+    families:
+      - whisper
+    parameter_size: 0.24B
+    specialization: Audio
+    size: 466000000
+  parameters:
+    main_gpu: 0
+    n_threads: 4
+  pipeline: whisper
+  provider: whisper_cpp
+  lora_weights: []

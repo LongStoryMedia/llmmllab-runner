@@ -15,7 +15,7 @@ from config import (
     VRAM_EVICT_RELEASE_WAIT_SEC,
 )
 from models import ModelProvider
-from server_manager import LlamaCppServerManager, SDCppServerManager
+from server_manager import LlamaCppServerManager, SDCppServerManager, WhisperCppServerManager
 from utils.hardware_manager import hardware_manager
 from utils.logging import llmmllogger, _session_id_ctx
 from utils.model_loader import ModelLoader
@@ -435,6 +435,8 @@ async def create_server(request: Request, body: CreateServerRequest):
     # proxy or cache.
     if model.provider == ModelProvider.STABLE_DIFFUSION_CPP:
         manager = SDCppServerManager(model=model, session_id=session_id)
+    elif model.provider == ModelProvider.WHISPER_CPP:
+        manager = WhisperCppServerManager(model=model, session_id=session_id)
     elif model.provider == ModelProvider.IN_PROCESS:
         raise HTTPException(
             status_code=400,

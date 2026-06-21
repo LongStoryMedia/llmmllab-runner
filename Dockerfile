@@ -87,6 +87,32 @@ RUN cmake -B build \
     && cmake --build build --target sd-server -j6
 
 # ---------------------------------------------------------------------------
+# Stage 2b — compile whisper.cpp with CUDA support for audio transcription
+# ---------------------------------------------------------------------------
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04 AS whisper-builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git wget curl \
+    build-essential cmake g++ ninja-build \
+    libcurl4-openssl-dev pkg-config ccache zstd \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV CUDA_HOME=/usr/local/cuda \
+    LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/lib64/stubs
+
+RUN ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
+
+# Pinned by vendor directory (git clone, not submodule for now).
+COPY vendors/whisper.cpp /whisper.cpp
+
+WORKDIR /whisper.cpp
+RUN cmake -B build \
+    -DGGML_CUDA=ON \
+    -DCMAKE_CUDA_ARCHITECTURES="75;86" \
+    -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build --target whisper-server -j6
+
+# ---------------------------------------------------------------------------
 # Stage 3 — Hunyuan3D-2.1 build (image-to-3D pipeline)
 #
 # Hunyuan3D ships as a git repo, not a wheel.  Two custom CUDA extensions
@@ -298,6 +324,7 @@ ENV PYTHONUNBUFFERED=1 \
     RUNNER_HOST=0.0.0.0 \
     LLAMA_SERVER_EXECUTABLE=/llama.cpp/build/bin/llama-server \
     SD_SERVER_EXECUTABLE=/stable-diffusion.cpp/build/bin/sd-server \
+    WHISPER_SERVER_EXECUTABLE=/whisper.cpp/build/bin/whisper-server \
     HY3DGEN_MODELS=/models \
     HUNYUAN3D_MODEL_PATH=hunyuan3d \
     HUNYUAN3D_SUBFOLDER=hunyuan3d-dit-v2-1 \
@@ -331,6 +358,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # emitted next to it in build/bin/.
 COPY --from=llama-builder /llama.cpp /llama.cpp
 COPY --from=sd-builder /stable-diffusion.cpp /stable-diffusion.cpp
+COPY --from=whisper-builder /whisper.cpp /whisper.cpp
 
 # Hunyuan3D source + the system-site-packages where it was installed
 # (pip install -e .).  We also pull in the system python's dist-packages
@@ -369,9 +397,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
 # Copy application source. We strip vendors/ from the runtime image — the
-# native binaries live under /llama.cpp and /stable-diffusion.cpp (copied
-# from the build stages above) and the C++ source trees would otherwise
-# add ~2 GB of unused artefacts to every image layer.
+# native binaries live under /llama.cpp, /stable-diffusion.cpp, and
+# /whisper.cpp (copied from the build stages above) and the C++ source
+# trees would otherwise add ~2 GB of unused artefacts to every image layer.
 COPY . ./
 RUN rm -rf /app/vendors
 

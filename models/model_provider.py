@@ -22,4 +22,5 @@ class ModelProvider(str, Enum):
     # ``POST /v1/pipelines/<name>/run``.  /v1/server/create rejects
     # acquire-attempts for these because there's nothing to acquire.
     IN_PROCESS = 'in_process'
+    WHISPER_CPP = 'whisper_cpp'
     OTHER = 'other'

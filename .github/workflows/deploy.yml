@@ -2,15 +2,15 @@ name: Deploy Runner
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/*]
     # Tooling/docs/CI-only changes don't change the runtime image — don't roll
     # the runner (and interrupt live sessions) for them. A push that ALSO touches
     # anything outside this list still deploys.
     paths-ignore:
-      - '**.md'
-      - 'Makefile'
-      - 'scripts/git-hooks/**'
-      - '.github/**'
+      - "**.md"
+      - "Makefile"
+      - "scripts/git-hooks/**"
+      - ".github/**"
 
 jobs:
   deploy:
