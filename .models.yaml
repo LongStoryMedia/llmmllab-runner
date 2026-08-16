@@ -19,6 +19,8 @@
     specialization: Text
     size: 20100000000
     original_ctx: 2048
+    clip_model_path: "/models/qwen3.8/27b/mmproj.gguf"
+
   parameters:
     # 262144 (256k), raised from 200000 on 2026-06-11. A Claude Code session
     # whose conversation grew past 200k could never recover: CC's auto-compact
